@@ -3305,7 +3305,7 @@ img, video, canvas, svg { max-width: 100%; }
   // ============================================================
   const SUPABASE_URL = 'https://yntpsdcjqeewgcozfqxg.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg';
-  const APP_KEY = 'po-coach';
+  const APP_KEY = (window.activeProfile ? window.activeProfile.toLowerCase() + '-' : '') + 'po-coach';
   const PC_SYNCED_KEYS = ['po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos'];
 
   let pcSupa = null;
@@ -3473,9 +3473,6 @@ img, video, canvas, svg { max-width: 100%; }
     if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
     // Skip if the placeholder values are still in place (local-only mode)
     if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
-    // When profiles are active, skip cloud sync to prevent cross-profile data
-    // bleed. Multi-profile sync will be wired in a later update.
-    if (window.activeProfile) return;
     pcSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     try {
       const { data, error } = await pcSupa

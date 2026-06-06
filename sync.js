@@ -9,16 +9,14 @@
   const SUPABASE_KEY = 'sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg';
 
   window.initCloudSync = function (config) {
-    const appKey = config && config.appKey;
+    const baseKey = config && config.appKey;
+    const appKey = (window.activeProfile ? window.activeProfile.toLowerCase() + '-' : '') + (baseKey || '');
     const syncedKeys = (config && config.syncedKeys) || [];
     const syncedPrefixes = (config && config.syncedPrefixes) || [];
     const onApplied = config && config.onApplied;
     if (!appKey || !window.supabase) return;
     if (!SUPABASE_URL || !SUPABASE_KEY) return;
     if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
-    // When profiles are active, skip cloud sync — each profile needs its own
-    // Supabase app key. Multi-profile sync will be wired in a later update.
-    if (window.activeProfile) return;
 
     let supa = null, pushTimer = null, suppressSync = false, lastSyncedJson = null;
 
