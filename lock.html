@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<title>ICEMAN dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: #050506;
+  color: #fafafa;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding:
+    max(32px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(32px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+}
+
+.lock-wordmark {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+  color: rgba(255,255,255,0.25);
+  text-transform: uppercase;
+  margin-bottom: 48px;
+  user-select: none;
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 340px;
+}
+
+.lock-heading {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.lock-sub {
+  font-size: 14px;
+  color: rgba(255,255,255,0.38);
+  margin-bottom: 28px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.lock-input {
+  display: block;
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+  color: #fafafa;
+  font-family: inherit;
+  font-size: 17px;
+  padding: 14px 16px;
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+  -webkit-text-security: disc;
+  -webkit-appearance: none;
+}
+.lock-input:focus { border-color: rgba(255,255,255,0.24); }
+.lock-input.shake {
+  border-color: #ff6b6b;
+  animation: lock-shake 0.32s ease;
+}
+@keyframes lock-shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-10px); }
+  75%      { transform: translateX(10px); }
+}
+
+.lock-btn {
+  display: block;
+  width: 100%;
+  background: #fafafa;
+  color: #050506;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+  transition: opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.lock-btn:active { opacity: 0.75; }
+.lock-btn:disabled { opacity: 0.45; cursor: default; }
+
+.lock-err {
+  min-height: 20px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #ff6b6b;
+  text-align: center;
+}
+
+/* Profile picker */
+.profile-pick-label {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.profile-pick-sub {
+  font-size: 14px;
+  color: rgba(255,255,255,0.38);
+  text-align: center;
+  margin-bottom: 28px;
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+}
+.profile-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 28px 16px 22px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+.profile-card:hover  { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+.profile-card:active { transform: scale(0.95); }
+.profile-avatar {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.10);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fafafa;
+  margin: 0 auto 14px;
+}
+.profile-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.70);
+}
+
+/* Screens */
+.screen { display: none; flex-direction: column; align-items: center; width: 100%; }
+.screen.active { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="lock-wordmark">ICEMAN dashboard</div>
+
+<!-- SETUP (first run) -->
+<div class="screen" id="sSetup">
+  <div class="lock-card">
+    <div class="lock-heading">Create a password</div>
+    <div class="lock-sub">You'll need this every time you open the dashboard.</div>
+    <input class="lock-input" type="password" id="setup1" placeholder="New password" autocomplete="new-password">
+    <input class="lock-input" type="password" id="setup2" placeholder="Confirm password" autocomplete="new-password">
+    <button class="lock-btn" id="setupBtn">Create password</button>
+    <div class="lock-err" id="setupErr"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="screen" id="sLogin">
+  <div class="lock-card">
+    <div class="lock-heading">Welcome back</div>
+    <div class="lock-sub">Enter your password to continue.</div>
+    <input class="lock-input" type="password" id="loginPw" placeholder="Password" autocomplete="current-password">
+    <button class="lock-btn" id="loginBtn">Unlock</button>
+    <div class="lock-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- PROFILE PICKER -->
+<div class="screen" id="sPick">
+  <div class="profile-pick-label">Who's this?</div>
+  <div class="profile-pick-sub">Pick your profile.</div>
+  <div class="profile-grid" id="profileGrid"></div>
+</div>
+
+<script>
+'use strict';
+
+const PROFILES   = ['ICEMAN', 'BATMAN'];
+const AUTH_KEY   = '_auth';     // hash + salt — never profile-prefixed
+const SESS_KEY   = '_session';  // { authenticated, profile } — never profile-prefixed
+
+// ─── Crypto ───────────────────────────────────────────────────────────────────
+async function pbkdf2(pw, salt) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode(salt), iterations: 250000, hash: 'SHA-256' },
+    key, 256
+  );
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function randHex(n) {
+  const a = new Uint8Array(n);
+  crypto.getRandomValues(a);
+  return Array.from(a).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ─── Session helpers ──────────────────────────────────────────────────────────
+function getAuth()    { try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch { return null; } }
+function getSess()    { try { return JSON.parse(localStorage.getItem(SESS_KEY)); } catch { return null; } }
+function setSess(obj) { localStorage.setItem(SESS_KEY, JSON.stringify(obj)); }
+
+// ─── Screens ──────────────────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function shake(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 400);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+  const auth = getAuth();
+  if (!auth) {
+    show('sSetup');
+    document.getElementById('setup1').focus();
+    return;
+  }
+  const sess = getSess();
+  if (sess && sess.profile && PROFILES.includes(sess.profile)) {
+    window.location.replace('index.html');
+    return;
+  }
+  if (sess && sess.authenticated) {
+    // Already verified password this session (e.g. profile switch) — skip to picker
+    showPicker();
+    return;
+  }
+  show('sLogin');
+  document.getElementById('loginPw').focus();
+}
+
+// ─── Setup ────────────────────────────────────────────────────────────────────
+document.getElementById('setupBtn').addEventListener('click', doSetup);
+document.getElementById('setup1').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('setup2').focus(); });
+document.getElementById('setup2').addEventListener('keydown', e => { if (e.key==='Enter') doSetup(); });
+
+async function doSetup() {
+  const p1  = document.getElementById('setup1').value;
+  const p2  = document.getElementById('setup2').value;
+  const err = document.getElementById('setupErr');
+  err.textContent = '';
+  if (!p1 || p1.length < 4) { err.textContent = 'Password must be at least 4 characters.'; return; }
+  if (p1 !== p2) { err.textContent = 'Passwords do not match.'; shake('setup2'); return; }
+  const btn = document.getElementById('setupBtn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  const salt = randHex(16);
+  const hash = await pbkdf2(p1, salt);
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ salt, hash }));
+  btn.textContent = 'Create password'; btn.disabled = false;
+  setSess({ authenticated: true });
+  showPicker();
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+
+async function doLogin() {
+  const pw  = document.getElementById('loginPw').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  const auth = getAuth();
+  if (!auth) { init(); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Checking…'; btn.disabled = true;
+  const hash = await pbkdf2(pw, auth.salt);
+  btn.textContent = 'Unlock'; btn.disabled = false;
+  if (hash !== auth.hash) {
+    err.textContent = 'Wrong password. Try again.';
+    shake('loginPw');
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginPw').focus();
+    return;
+  }
+  setSess({ authenticated: true });
+  showPicker();
+}
+
+// ─── Profile picker ───────────────────────────────────────────────────────────
+function showPicker() {
+  const grid = document.getElementById('profileGrid');
+  grid.innerHTML = PROFILES.map(name => `
+    <button class="profile-card" data-p="${name}" type="button">
+      <div class="profile-avatar">${name.slice(0,2)}</div>
+      <div class="profile-name">${name}</div>
+    </button>
+  `).join('');
+  grid.querySelectorAll('.profile-card').forEach(card => {
+    card.addEventListener('click', () => {
+      setSess({ authenticated: true, profile: card.dataset.p });
+      window.location.replace('index.html');
+    });
+  });
+  show('sPick');
+}
+
+init();
+</script>
+</body>
+</html>

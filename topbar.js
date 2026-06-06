@@ -119,6 +119,68 @@
 @media (max-width: 380px) {
   .topbar-pill-label { display: none; }
 }
+.topbar-profile-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.topbar-profile-btn {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 50%;
+  color: #FAFAFA;
+  font-family: inherit;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.topbar-profile-btn:hover { background: rgba(255,255,255,0.14); }
+.topbar-profile-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #1c1c1e;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 6px;
+  min-width: 168px;
+  z-index: 200;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+.topbar-profile-menu.open { display: block; }
+.topbar-profile-menu-who {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  padding: 8px 10px 4px;
+  user-select: none;
+}
+.topbar-profile-menu-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #FAFAFA;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  padding: 10px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.topbar-profile-menu-btn:hover { background: rgba(255,255,255,0.07); }
+.topbar-profile-menu-btn.danger { color: #ff6b6b; }
 
 /* === Global mobile lockdown ===
    1) Hide the right-side scrollbar on phones (iOS uses overlay scrollbars anyway).
@@ -195,6 +257,16 @@ body.topbar-modal-open {
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">FINANCE</span>
   </a>
+  <div class="topbar-profile-wrap" id="topbarProfileWrap" style="display:none">
+    <button class="topbar-profile-btn" id="topbarProfileBtn" type="button" aria-haspopup="true" aria-expanded="false">
+      <span id="topbarProfileInit"></span>
+    </button>
+    <div class="topbar-profile-menu" id="topbarProfileMenu" role="menu">
+      <div class="topbar-profile-menu-who" id="topbarProfileWho"></div>
+      <button class="topbar-profile-menu-btn" id="topbarProfileSwitch" type="button" role="menuitem">Switch profile</button>
+      <button class="topbar-profile-menu-btn danger" id="topbarProfileLogout" type="button" role="menuitem">Log out</button>
+    </div>
+  </div>
 </header>
 `;
 
@@ -413,6 +485,34 @@ body.topbar-modal-open {
     injectStyleAndHTML();
     const btn = document.getElementById('topbarWaterAdd');
     if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); addWater(); });
+
+    // Profile button — only shown when window.activeProfile is set
+    const profileWrap   = document.getElementById('topbarProfileWrap');
+    const profileBtn    = document.getElementById('topbarProfileBtn');
+    const profileMenu   = document.getElementById('topbarProfileMenu');
+    const profileInit   = document.getElementById('topbarProfileInit');
+    const profileWho    = document.getElementById('topbarProfileWho');
+    if (profileWrap && window.activeProfile) {
+      profileInit.textContent = window.activeProfile.slice(0, 2).toUpperCase();
+      profileWho.textContent  = window.activeProfile;
+      profileWrap.style.display = 'flex';
+      profileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = profileMenu.classList.toggle('open');
+        profileBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      document.addEventListener('click', () => {
+        profileMenu.classList.remove('open');
+        profileBtn.setAttribute('aria-expanded', 'false');
+      });
+      document.getElementById('topbarProfileSwitch').addEventListener('click', () => {
+        if (typeof window.dashSwitch === 'function') window.dashSwitch();
+      });
+      document.getElementById('topbarProfileLogout').addEventListener('click', () => {
+        if (typeof window.dashLogout === 'function') window.dashLogout();
+      });
+    }
+
     render();
     lockGestures();
     startModalLock();

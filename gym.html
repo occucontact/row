@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0b">
 <title>Progressive Overload Coach</title>
+<script src="profile.js"></script>
 <script src="topbar.js" defer></script>
 
 <!-- =============================================================
@@ -3472,6 +3473,9 @@ img, video, canvas, svg { max-width: 100%; }
     if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
     // Skip if the placeholder values are still in place (local-only mode)
     if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
+    // When profiles are active, skip cloud sync to prevent cross-profile data
+    // bleed. Multi-profile sync will be wired in a later update.
+    if (window.activeProfile) return;
     pcSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     try {
       const { data, error } = await pcSupa

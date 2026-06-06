@@ -16,6 +16,9 @@
     if (!appKey || !window.supabase) return;
     if (!SUPABASE_URL || !SUPABASE_KEY) return;
     if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
+    // When profiles are active, skip cloud sync — each profile needs its own
+    // Supabase app key. Multi-profile sync will be wired in a later update.
+    if (window.activeProfile) return;
 
     let supa = null, pushTimer = null, suppressSync = false, lastSyncedJson = null;
 
