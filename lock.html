@@ -176,18 +176,6 @@ body {
 
 <div class="lock-wordmark">Welcome</div>
 
-<!-- SETUP (first visit on this device only) -->
-<div class="screen" id="sSetup">
-  <div class="lock-card">
-    <div class="lock-heading">Create a password</div>
-    <div class="lock-sub">First time on this device. Set a password — you'll use it every time you open the dashboard.</div>
-    <input class="lock-input" type="password" id="setup1" placeholder="New password" autocomplete="new-password">
-    <input class="lock-input" type="password" id="setup2" placeholder="Confirm password" autocomplete="new-password">
-    <button class="lock-btn" id="setupBtn">Save password</button>
-    <div class="lock-err" id="setupErr"></div>
-  </div>
-</div>
-
 <!-- LOGIN -->
 <div class="screen" id="sLogin">
   <div class="lock-card">
@@ -249,14 +237,17 @@ function shake(id) {
   setTimeout(() => el.classList.remove('shake'), 400);
 }
 
+// ─── Default credentials (hash only — plaintext never stored in source) ───────
+// Seeded on first visit so no setup screen is ever shown.
+const DEFAULT_AUTH = {
+  salt: 'a3f8c2e1d4b5f6a7',
+  hash: 'fff9419eea948f1676207eafc774f55d65a6c28fe9709e34c970a3644722b472'
+};
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
-  const auth = getAuth();
-  if (!auth) {
-    // First visit on this device — ask user to set a password
-    show('sSetup');
-    document.getElementById('setup1').focus();
-    return;
+  if (!getAuth()) {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(DEFAULT_AUTH));
   }
   const sess = getSess();
   if (sess && sess.profile && PROFILES.includes(sess.profile)) {
@@ -269,29 +260,6 @@ function init() {
   }
   show('sLogin');
   document.getElementById('loginPw').focus();
-}
-
-// ─── Setup ────────────────────────────────────────────────────────────────────
-document.getElementById('setupBtn').addEventListener('click', doSetup);
-document.getElementById('setup1').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('setup2').focus(); });
-document.getElementById('setup2').addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
-
-async function doSetup() {
-  const p1  = document.getElementById('setup1').value;
-  const p2  = document.getElementById('setup2').value;
-  const err = document.getElementById('setupErr');
-  err.textContent = '';
-  if (!p1 || p1.length < 4) { err.textContent = 'Password must be at least 4 characters.'; return; }
-  if (p1 !== p2) { err.textContent = 'Passwords do not match.'; shake('setup2'); return; }
-  const btn = document.getElementById('setupBtn');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-  const salt = randHex(16);
-  const hash = await pbkdf2(p1, salt);
-  // Only the hash + salt are stored — the plaintext password is never saved
-  localStorage.setItem(AUTH_KEY, JSON.stringify({ salt, hash }));
-  btn.textContent = 'Save password'; btn.disabled = false;
-  setSess({ authenticated: true });
-  showPicker();
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
