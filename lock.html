@@ -174,19 +174,7 @@ body {
 </head>
 <body>
 
-<div class="lock-wordmark">ICEMAN dashboard</div>
-
-<!-- SETUP (first run) -->
-<div class="screen" id="sSetup">
-  <div class="lock-card">
-    <div class="lock-heading">Create a password</div>
-    <div class="lock-sub">You'll need this every time you open the dashboard.</div>
-    <input class="lock-input" type="password" id="setup1" placeholder="New password" autocomplete="new-password">
-    <input class="lock-input" type="password" id="setup2" placeholder="Confirm password" autocomplete="new-password">
-    <button class="lock-btn" id="setupBtn">Create password</button>
-    <div class="lock-err" id="setupErr"></div>
-  </div>
-</div>
+<div class="lock-wordmark">Welcome</div>
 
 <!-- LOGIN -->
 <div class="screen" id="sLogin">
@@ -209,9 +197,9 @@ body {
 <script>
 'use strict';
 
-const PROFILES   = ['ICEMAN', 'BATMAN'];
-const AUTH_KEY   = '_auth';     // hash + salt — never profile-prefixed
-const SESS_KEY   = '_session';  // { authenticated, profile } — never profile-prefixed
+const PROFILES = ['ICEMAN', 'BATMAN'];
+const AUTH_KEY  = '_auth';
+const SESS_KEY  = '_session';
 
 // ─── Crypto ───────────────────────────────────────────────────────────────────
 async function pbkdf2(pw, salt) {
@@ -250,20 +238,22 @@ function shake(id) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-function init() {
-  const auth = getAuth();
+async function init() {
+  // If no password is stored yet, seed it silently from the default
+  let auth = getAuth();
   if (!auth) {
-    show('sSetup');
-    document.getElementById('setup1').focus();
-    return;
+    const salt = randHex(16);
+    const hash = await pbkdf2('tjznYLwAt8L79WQ', salt);
+    localStorage.setItem(AUTH_KEY, JSON.stringify({ salt, hash }));
+    auth = { salt, hash };
   }
+
   const sess = getSess();
   if (sess && sess.profile && PROFILES.includes(sess.profile)) {
     window.location.replace('index.html');
     return;
   }
   if (sess && sess.authenticated) {
-    // Already verified password this session (e.g. profile switch) — skip to picker
     showPicker();
     return;
   }
@@ -271,31 +261,9 @@ function init() {
   document.getElementById('loginPw').focus();
 }
 
-// ─── Setup ────────────────────────────────────────────────────────────────────
-document.getElementById('setupBtn').addEventListener('click', doSetup);
-document.getElementById('setup1').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('setup2').focus(); });
-document.getElementById('setup2').addEventListener('keydown', e => { if (e.key==='Enter') doSetup(); });
-
-async function doSetup() {
-  const p1  = document.getElementById('setup1').value;
-  const p2  = document.getElementById('setup2').value;
-  const err = document.getElementById('setupErr');
-  err.textContent = '';
-  if (!p1 || p1.length < 4) { err.textContent = 'Password must be at least 4 characters.'; return; }
-  if (p1 !== p2) { err.textContent = 'Passwords do not match.'; shake('setup2'); return; }
-  const btn = document.getElementById('setupBtn');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-  const salt = randHex(16);
-  const hash = await pbkdf2(p1, salt);
-  localStorage.setItem(AUTH_KEY, JSON.stringify({ salt, hash }));
-  btn.textContent = 'Create password'; btn.disabled = false;
-  setSess({ authenticated: true });
-  showPicker();
-}
-
 // ─── Login ────────────────────────────────────────────────────────────────────
 document.getElementById('loginBtn').addEventListener('click', doLogin);
-document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
 async function doLogin() {
   const pw  = document.getElementById('loginPw').value;
