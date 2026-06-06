@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#050506">
 <title>ICEMAN dashboard</title>
 <script src="profile.js"></script>
+<script>document.title = (window.activeProfile || 'ICEMAN') + ' dashboard';</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
@@ -600,7 +601,8 @@ body::after {
 <body>
 <div class="page">
 
-  <h1 class="dash-title">ICEMAN dashboard</h1>
+  <h1 class="dash-title"><span id="dash-profile-name">ICEMAN</span> dashboard</h1>
+  <script>var el=document.getElementById('dash-profile-name');if(el&&window.activeProfile)el.textContent=window.activeProfile;</script>
 
   <div class="ticker-row">
     <div class="goal-ticker" id="goalTicker" aria-live="polite" aria-atomic="true">
