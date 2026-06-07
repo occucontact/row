@@ -253,6 +253,10 @@ body.topbar-modal-open {
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">GYM</span>
   </a>
+  <a href="kondisjon.html" class="topbar-pill" id="topbarKondisjon">
+    <span class="topbar-pill-dot"></span>
+    <span class="topbar-pill-label">KONDIS</span>
+  </a>
   <a href="finance.html" class="topbar-pill" id="topbarFinance">
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">FINANCE</span>

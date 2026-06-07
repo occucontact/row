@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<title>Kondisjon</title>
+<script src="profile.js"></script>
+<script src="locale.js"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --c-warmup: #1D9E75;
+  --c-high: #FF7A3F;
+  --c-rest: #38BDF8;
+  --c-peak: #F59E0B;
+  --c-cooldown: #6EE7B7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(55% 45% at 75% 10%, rgba(255,122,63,0.10) 0%, transparent 60%),
+    radial-gradient(45% 35% at 20% 85%, rgba(29,158,117,0.08) 0%, transparent 60%);
+  filter: blur(40px);
+}
+main {
+  max-width: 480px; margin: 0 auto;
+  padding: 28px 16px max(28px, env(safe-area-inset-bottom));
+  position: relative;
+}
+
+/* Header */
+.ko-header { margin-bottom: 28px; }
+.ko-header h1 {
+  font-size: 26px; font-weight: 800; letter-spacing: -0.5px;
+  color: var(--text-primary); line-height: 1.1;
+}
+.ko-header p {
+  font-size: 13px; color: var(--text-tertiary); margin-top: 4px;
+}
+
+/* Section label */
+.ko-section-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+
+/* Program picker cards */
+.ko-picker { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.ko-prog-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ko-prog-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.10); }
+.ko-prog-card-name {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.ko-prog-card-desc {
+  font-size: 12px; color: var(--text-tertiary); line-height: 1.5;
+}
+.ko-prog-card-structure {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+}
+.ko-phase-pip {
+  font-size: 11px; font-weight: 600; padding: 3px 9px;
+  border-radius: 20px; background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+}
+.ko-phase-pip.warmup { background: rgba(29,158,117,0.18); color: var(--c-warmup); }
+.ko-phase-pip.high   { background: rgba(255,122,63,0.18); color: var(--c-high); }
+.ko-phase-pip.rest   { background: rgba(56,189,248,0.14); color: var(--c-rest); }
+.ko-phase-pip.peak   { background: rgba(245,158,11,0.16); color: var(--c-peak); }
+.ko-phase-pip.cooldown { background: rgba(110,231,183,0.14); color: var(--c-cooldown); }
+
+/* Config panel (rounds picker for program A) */
+.ko-config {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px 18px; margin-bottom: 28px;
+}
+.ko-config-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; font-weight: 600; }
+.ko-rounds-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.ko-round-btn {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary); font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: var(--font);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ko-round-btn:hover { background: rgba(255,255,255,0.08); }
+.ko-round-btn.sel {
+  background: rgba(255,122,63,0.20); border-color: rgba(255,122,63,0.45);
+  color: var(--c-high);
+}
+.ko-config-note { font-size: 12px; color: var(--text-tertiary); margin-bottom: 18px; }
+
+/* Buttons */
+.ko-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 14px; border-radius: 14px;
+  font-family: var(--font); font-size: 14px; font-weight: 700;
+  cursor: pointer; border: none; transition: background 0.15s, transform 0.10s;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.03em;
+}
+.ko-btn:active { transform: scale(0.97); }
+.ko-btn-primary {
+  background: linear-gradient(135deg, rgba(255,122,63,0.90), rgba(245,158,11,0.80));
+  color: #fff;
+}
+.ko-btn-primary:hover { background: linear-gradient(135deg, rgba(255,122,63,1), rgba(245,158,11,0.95)); }
+.ko-btn-ghost {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary);
+}
+.ko-btn-ghost:hover { background: rgba(255,255,255,0.09); }
+.ko-btn + .ko-btn { margin-top: 8px; }
+
+/* Timer section */
+.ko-timer { margin-bottom: 28px; }
+.ko-phase-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 20px; margin-bottom: 20px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  background: rgba(255,255,255,0.06); color: var(--text-secondary);
+  transition: background 0.3s, color 0.3s;
+}
+.ko-phase-badge.warmup  { background: rgba(29,158,117,0.18); color: var(--c-warmup); }
+.ko-phase-badge.high    { background: rgba(255,122,63,0.22); color: var(--c-high); }
+.ko-phase-badge.rest    { background: rgba(56,189,248,0.16); color: var(--c-rest); }
+.ko-phase-badge.peak    { background: rgba(245,158,11,0.20); color: var(--c-peak); }
+.ko-phase-badge.cooldown{ background: rgba(110,231,183,0.16); color: var(--c-cooldown); }
+.ko-phase-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.ko-timer-face {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 28px 20px 24px;
+  text-align: center; margin-bottom: 12px;
+}
+.ko-incline {
+  font-size: 13px; color: var(--text-tertiary); margin-bottom: 6px;
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.ko-incline span { color: var(--text-primary); }
+.ko-countdown {
+  font-size: 72px; font-weight: 900; font-family: var(--font-mono);
+  color: var(--text-primary); line-height: 1; letter-spacing: -2px;
+  margin-bottom: 8px;
+}
+.ko-phase-name {
+  font-size: 14px; color: var(--text-secondary); font-weight: 600;
+}
+.ko-progress-bar {
+  height: 3px; background: rgba(255,255,255,0.06);
+  border-radius: 2px; overflow: hidden; margin-top: 16px;
+}
+.ko-progress-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--c-high);
+  transition: width 0.9s linear, background 0.3s;
+}
+.ko-timer-meta {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+.ko-meta-pill {
+  flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 12px; text-align: center;
+}
+.ko-meta-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-tertiary); display: block; margin-bottom: 3px;
+}
+.ko-meta-value {
+  font-size: 16px; font-weight: 800; font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+.ko-controls { display: flex; gap: 8px; }
+.ko-controls .ko-btn { flex: 1; }
+
+/* Phase list preview */
+.ko-phase-list {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 16px; overflow: hidden;
+}
+.ko-phase-row {
+  display: flex; align-items: center; padding: 9px 14px; gap: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.ko-phase-row:last-child { border-bottom: none; }
+.ko-phase-row.current-phase { background: rgba(255,255,255,0.04); }
+.ko-phase-row.done-phase { opacity: 0.35; }
+.ko-phase-row-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,0.15);
+}
+.ko-phase-row-dot.warmup  { background: var(--c-warmup); }
+.ko-phase-row-dot.high    { background: var(--c-high); }
+.ko-phase-row-dot.rest    { background: var(--c-rest); }
+.ko-phase-row-dot.peak    { background: var(--c-peak); }
+.ko-phase-row-dot.cooldown{ background: var(--c-cooldown); }
+.ko-phase-row-name { flex: 1; color: var(--text-secondary); font-weight: 500; }
+.ko-phase-row-dur { color: var(--text-tertiary); font-family: var(--font-mono); }
+
+/* Done banner */
+.ko-done {
+  background: rgba(29,158,117,0.12); border: 1px solid rgba(29,158,117,0.25);
+  border-radius: 16px; padding: 24px 20px; text-align: center; margin-bottom: 20px;
+}
+.ko-done-title { font-size: 22px; font-weight: 800; color: var(--c-warmup); margin-bottom: 6px; }
+.ko-done-sub { font-size: 13px; color: var(--text-secondary); }
+
+/* Session history */
+.ko-log { }
+.ko-log-empty {
+  text-align: center; padding: 32px 20px;
+  font-size: 13px; color: var(--text-tertiary);
+}
+.ko-log-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.ko-log-row:last-child { border-bottom: none; }
+.ko-log-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+  background: rgba(255,122,63,0.14);
+}
+.ko-log-icon.b { background: rgba(56,189,248,0.12); }
+.ko-log-meta { flex: 1; min-width: 0; }
+.ko-log-prog { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.ko-log-date { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+.ko-log-dur { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+
+/* Streak card */
+.ko-streak-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 18px;
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 12px;
+}
+.ko-streak-num {
+  font-size: 36px; font-weight: 900; font-family: var(--font-mono);
+  color: var(--text-primary); line-height: 1; flex-shrink: 0;
+}
+.ko-streak-label { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; font-weight: 600; }
+.ko-streak-desc { font-size: 12px; color: var(--text-secondary); }
+
+@media (max-width: 480px) {
+  .ko-countdown { font-size: 60px; }
+  main { padding: 20px 14px max(20px, env(safe-area-inset-bottom)); }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="ko-header">
+    <h1>Kondisjon</h1>
+    <p>Tredemølle-intervaller</p>
+  </header>
+
+  <div id="koView"></div>
+  <div id="koLogSection"></div>
+</main>
+<script>
+(function () {
+  'use strict';
+
+  const LS_KEY = 'ko_sessions_v1';
+  const STATE_KEY = 'ko_timer_state_v1';
+
+  // ---- Program definitions ----
+  function buildPhasesA(rounds) {
+    const phases = [
+      { name: 'Oppvarming', durationMin: 5, incline: '6%', type: 'warmup' }
+    ];
+    for (let i = 0; i < rounds; i++) {
+      phases.push({ name: 'Intervall – Høy intensitet', durationMin: 3, incline: '12–15%', type: 'high' });
+      phases.push({ name: 'Restitusjon', durationMin: 4, incline: '6%', type: 'rest' });
+    }
+    phases.push({ name: 'Nedkjøling', durationMin: 5, incline: '1%', type: 'cooldown' });
+    return phases;
+  }
+
+  function buildPhasesB() {
+    const phases = [
+      { name: 'Oppvarming', durationMin: 5, incline: 'Rolig', type: 'warmup' }
+    ];
+    for (let i = 1; i <= 15; i++) {
+      phases.push({
+        name: `Pyramide opp`,
+        durationMin: 1,
+        incline: i + '%',
+        type: i >= 10 ? 'high' : 'warmup'
+      });
+    }
+    phases.push({ name: 'Hold topp', durationMin: 5, incline: '15%', type: 'peak' });
+    for (let i = 14; i >= 1; i--) {
+      phases.push({
+        name: `Pyramide ned`,
+        durationMin: 1,
+        incline: i + '%',
+        type: i >= 10 ? 'rest' : 'cooldown'
+      });
+    }
+    return phases;
+  }
+
+  const PROGRAMS = {
+    a: {
+      id: 'a',
+      name: 'Intervalldrag',
+      desc: 'Veksling mellom høy og lav stigning · 4–8 serier',
+      structure: [
+        { label: '5 min oppvarming', type: 'warmup' },
+        { label: '3 min @ 12–15% (×runder)', type: 'high' },
+        { label: '4 min @ 6% restitusjon', type: 'rest' },
+        { label: '5 min nedkjøling', type: 'cooldown' }
+      ]
+    },
+    b: {
+      id: 'b',
+      name: 'Pyramide',
+      desc: 'Stigning øker 1%/min opp til 15% · Hold · Ned igjen',
+      structure: [
+        { label: '5 min oppvarming', type: 'warmup' },
+        { label: '1% → 15% (1%/min, 15 min)', type: 'high' },
+        { label: '5 min på 15%', type: 'peak' },
+        { label: '15% → 1% (1%/min, 14 min)', type: 'cooldown' }
+      ]
+    }
+  };
+
+  // ---- Timer state ----
+  let timer = null; // { phases, phaseIdx, phaseElapsed, totalElapsed, running, programId, rounds, startTs, done }
+
+  function loadSessions() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; }
+  }
+  function saveSessions(arr) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch {}
+  }
+  function addSession(s) {
+    const arr = loadSessions();
+    arr.unshift(s);
+    saveSessions(arr.slice(0, 60));
+  }
+
+  // ---- Formatting ----
+  function fmtMMSS(secs) {
+    const m = Math.floor(secs / 60), s = secs % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+  function fmtElapsed(secs) {
+    const m = Math.floor(secs / 60), s = secs % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+  function totalMins(phases) {
+    return phases.reduce((n, p) => n + p.durationMin, 0);
+  }
+
+  // ---- Views ----
+  let selectedProgram = null;
+  let selectedRounds = 6;
+
+  function render() {
+    const view = document.getElementById('koView');
+    if (!view) return;
+    if (timer) {
+      view.innerHTML = renderTimer();
+      bindTimerControls();
+    } else {
+      view.innerHTML = renderPicker();
+      bindPickerControls();
+    }
+    renderLog();
+  }
+
+  function renderPicker() {
+    if (selectedProgram) {
+      if (selectedProgram === 'a') return renderConfigA();
+      if (selectedProgram === 'b') return renderStartB();
+    }
+    return `
+      <div class="ko-section-label">Velg program</div>
+      <div class="ko-picker">
+        ${Object.values(PROGRAMS).map(p => `
+          <div class="ko-prog-card" data-prog="${p.id}">
+            <div class="ko-prog-card-name">${p.name}</div>
+            <div class="ko-prog-card-desc">${p.desc}</div>
+            <div class="ko-prog-card-structure">
+              ${p.structure.map(s => `<span class="ko-phase-pip ${s.type}">${s.label}</span>`).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  function renderConfigA() {
+    const rounds = [4,5,6,7,8];
+    const mins = 5 + selectedRounds * 7 + 5;
+    return `
+      <div class="ko-config">
+        <div class="ko-config-label">Intervalldrag — velg antall serier</div>
+        <div class="ko-rounds-row">
+          ${rounds.map(r => `
+            <button class="ko-round-btn ${r === selectedRounds ? 'sel' : ''}" data-rounds="${r}">${r}</button>
+          `).join('')}
+        </div>
+        <div class="ko-config-note">~${mins} min total (3 min høy + 4 min lav per serie)</div>
+        <button class="ko-btn ko-btn-primary" id="koStartA">Start økt</button>
+        <button class="ko-btn ko-btn-ghost" id="koBackPicker" style="margin-top:8px">← Tilbake</button>
+      </div>`;
+  }
+
+  function renderStartB() {
+    const phases = buildPhasesB();
+    const mins = totalMins(phases);
+    return `
+      <div class="ko-config">
+        <div class="ko-config-label">Pyramide — ~${mins} min total</div>
+        <div class="ko-config-note" style="margin-bottom:18px">Stigning øker med 1%/min fra 1% til 15%, holder 5 min, deretter ned igjen.</div>
+        <button class="ko-btn ko-btn-primary" id="koStartB">Start økt</button>
+        <button class="ko-btn ko-btn-ghost" id="koBackPicker" style="margin-top:8px">← Tilbake</button>
+      </div>`;
+  }
+
+  function renderTimer() {
+    const t = timer;
+    const phase = t.phases[t.phaseIdx];
+    if (!phase) return renderDone();
+    const phaseSec = phase.durationMin * 60;
+    const remaining = phaseSec - t.phaseElapsed;
+    const progress = t.phaseElapsed / phaseSec;
+    const fillPct = Math.min(100, Math.round(progress * 100));
+    const nextPhase = t.phases[t.phaseIdx + 1];
+    const totalSec = totalMins(t.phases) * 60;
+    const totalRemaining = totalSec - t.totalElapsed;
+
+    const colorMap = { warmup: 'var(--c-warmup)', high: 'var(--c-high)', rest: 'var(--c-rest)', peak: 'var(--c-peak)', cooldown: 'var(--c-cooldown)' };
+    const fillColor = colorMap[phase.type] || 'rgba(255,255,255,0.3)';
+
+    return `
+      <span class="ko-phase-badge ${phase.type}">
+        <span class="ko-phase-dot"></span>
+        ${phase.name}
+      </span>
+      <div class="ko-timer-face">
+        <div class="ko-incline">Stigning: <span>${phase.incline}</span></div>
+        <div class="ko-countdown" id="koCountdown">${fmtMMSS(remaining)}</div>
+        <div class="ko-phase-name">${phase.name}${nextPhase ? ` · neste: ${nextPhase.name} (${nextPhase.incline})` : ' · Siste fase!'}</div>
+        <div class="ko-progress-bar">
+          <div class="ko-progress-fill" id="koProgressFill" style="width:${fillPct}%; background:${fillColor}"></div>
+        </div>
+      </div>
+      <div class="ko-timer-meta">
+        <div class="ko-meta-pill">
+          <span class="ko-meta-label">Totalt igjen</span>
+          <span class="ko-meta-value" id="koTotalRemaining">${fmtMMSS(Math.max(0, totalRemaining))}</span>
+        </div>
+        <div class="ko-meta-pill">
+          <span class="ko-meta-label">Gått</span>
+          <span class="ko-meta-value" id="koTotalElapsed">${fmtElapsed(t.totalElapsed)}</span>
+        </div>
+        <div class="ko-meta-pill">
+          <span class="ko-meta-label">Fase</span>
+          <span class="ko-meta-value">${t.phaseIdx + 1}/${t.phases.length}</span>
+        </div>
+      </div>
+      <div class="ko-controls">
+        <button class="ko-btn ko-btn-primary" id="koPauseBtn">${t.running ? 'Pause' : 'Fortsett'}</button>
+        <button class="ko-btn ko-btn-ghost" id="koStopBtn" style="flex:0 0 auto; width:auto; padding:14px 18px">Avslutt</button>
+      </div>
+      <div style="margin-top: 12px;">
+        ${renderPhaseList()}
+      </div>`;
+  }
+
+  function renderPhaseList() {
+    const t = timer;
+    const visible = t.phases.slice(Math.max(0, t.phaseIdx - 1), t.phaseIdx + 5);
+    const offset = Math.max(0, t.phaseIdx - 1);
+    return `
+      <div class="ko-phase-list">
+        ${visible.map((p, i) => {
+          const absIdx = offset + i;
+          const cls = absIdx === t.phaseIdx ? 'current-phase' : (absIdx < t.phaseIdx ? 'done-phase' : '');
+          return `
+            <div class="ko-phase-row ${cls}">
+              <span class="ko-phase-row-dot ${p.type}"></span>
+              <span class="ko-phase-row-name">${p.name} · ${p.incline}</span>
+              <span class="ko-phase-row-dur">${p.durationMin} min</span>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  function renderDone() {
+    const elapsed = timer ? timer.totalElapsed : 0;
+    return `
+      <div class="ko-done">
+        <div class="ko-done-title">Økt fullført!</div>
+        <div class="ko-done-sub">Du gjennomførte ${fmtElapsed(elapsed)} på tredemøllen.</div>
+      </div>
+      <button class="ko-btn ko-btn-ghost" id="koResetBtn">Ny økt</button>`;
+  }
+
+  // ---- Log ----
+  function renderLog() {
+    const el = document.getElementById('koLogSection');
+    if (!el) return;
+    const sessions = loadSessions();
+    const streak = calcStreak(sessions);
+    el.innerHTML = `
+      <div class="ko-section-label" style="margin-top: 28px">Historikk</div>
+      <div class="ko-streak-card">
+        <div>
+          <div class="ko-streak-num">${streak}</div>
+          <div class="ko-streak-label">streak</div>
+        </div>
+        <div class="ko-streak-desc">
+          ${streak === 0 ? 'Start første økt nå!' : streak === 1 ? 'Bra start – bygg videre i morgen.' : `${streak} kondisjon-økter på rad. Fortsett!`}
+        </div>
+      </div>
+      ${sessions.length === 0
+        ? '<div class="ko-log-empty">Ingen økter logget ennå</div>'
+        : sessions.slice(0, 12).map(s => `
+          <div class="ko-log-row">
+            <div class="ko-log-icon ${s.programId === 'b' ? 'b' : ''}">${s.programId === 'b' ? '▲' : '⚡'}</div>
+            <div class="ko-log-meta">
+              <div class="ko-log-prog">${s.programId === 'a' ? 'Intervalldrag' : 'Pyramide'}${s.rounds ? ' · ' + s.rounds + ' serier' : ''}</div>
+              <div class="ko-log-date">${s.date}</div>
+            </div>
+            <div class="ko-log-dur">${fmtElapsed(s.durationSec || 0)}</div>
+          </div>`).join('')
+      }`;
+  }
+
+  function calcStreak(sessions) {
+    if (!sessions.length) return 0;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    let streak = 0, check = new Date(today);
+    const dates = new Set(sessions.map(s => s.date.split('T')[0]));
+    for (let i = 0; i < 365; i++) {
+      const key = check.toISOString().slice(0,10);
+      if (dates.has(key)) {
+        streak++;
+        check.setDate(check.getDate() - 1);
+      } else if (i === 0) {
+        check.setDate(check.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  // ---- Timer logic ----
+  let intervalId = null;
+
+  function startTimer(phases, programId, rounds) {
+    stopInterval();
+    timer = {
+      phases,
+      phaseIdx: 0,
+      phaseElapsed: 0,
+      totalElapsed: 0,
+      running: true,
+      programId,
+      rounds: rounds || null,
+      startTs: Date.now(),
+      done: false
+    };
+    render();
+    intervalId = setInterval(tick, 1000);
+  }
+
+  function tick() {
+    if (!timer || !timer.running) return;
+    timer.phaseElapsed++;
+    timer.totalElapsed++;
+    const phase = timer.phases[timer.phaseIdx];
+    if (phase && timer.phaseElapsed >= phase.durationMin * 60) {
+      timer.phaseIdx++;
+      timer.phaseElapsed = 0;
+    }
+    if (timer.phaseIdx >= timer.phases.length) {
+      timer.done = true;
+      timer.running = false;
+      stopInterval();
+      addSession({
+        id: Date.now().toString(),
+        date: new Date().toISOString().slice(0, 10),
+        programId: timer.programId,
+        rounds: timer.rounds,
+        durationSec: timer.totalElapsed
+      });
+      render();
+      return;
+    }
+    updateTimerDisplay();
+  }
+
+  function updateTimerDisplay() {
+    const t = timer;
+    if (!t) return;
+    const phase = t.phases[t.phaseIdx];
+    if (!phase) return;
+    const phaseSec = phase.durationMin * 60;
+    const remaining = phaseSec - t.phaseElapsed;
+    const totalSec = totalMins(t.phases) * 60;
+    const totalRemaining = Math.max(0, totalSec - t.totalElapsed);
+    const cd = document.getElementById('koCountdown');
+    const tr = document.getElementById('koTotalRemaining');
+    const te = document.getElementById('koTotalElapsed');
+    const pf = document.getElementById('koProgressFill');
+    if (cd) cd.textContent = fmtMMSS(remaining);
+    if (tr) tr.textContent = fmtMMSS(totalRemaining);
+    if (te) te.textContent = fmtElapsed(t.totalElapsed);
+    if (pf) pf.style.width = Math.min(100, Math.round((t.phaseElapsed / phaseSec) * 100)) + '%';
+  }
+
+  function stopInterval() {
+    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  }
+
+  function pauseResume() {
+    if (!timer) return;
+    timer.running = !timer.running;
+    if (timer.running) {
+      intervalId = setInterval(tick, 1000);
+    } else {
+      stopInterval();
+    }
+    const btn = document.getElementById('koPauseBtn');
+    if (btn) btn.textContent = timer.running ? 'Pause' : 'Fortsett';
+  }
+
+  function stopSession() {
+    if (timer && timer.totalElapsed > 60) {
+      addSession({
+        id: Date.now().toString(),
+        date: new Date().toISOString().slice(0, 10),
+        programId: timer.programId,
+        rounds: timer.rounds,
+        durationSec: timer.totalElapsed
+      });
+    }
+    stopInterval();
+    timer = null;
+    selectedProgram = null;
+    render();
+  }
+
+  // ---- Bind controls ----
+  function bindPickerControls() {
+    document.querySelectorAll('.ko-prog-card').forEach(el => {
+      el.addEventListener('click', () => {
+        selectedProgram = el.dataset.prog;
+        render();
+      });
+    });
+    const back = document.getElementById('koBackPicker');
+    if (back) back.addEventListener('click', () => { selectedProgram = null; render(); });
+
+    document.querySelectorAll('.ko-round-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedRounds = parseInt(btn.dataset.rounds, 10);
+        render();
+      });
+    });
+
+    const startA = document.getElementById('koStartA');
+    if (startA) startA.addEventListener('click', () => {
+      startTimer(buildPhasesA(selectedRounds), 'a', selectedRounds);
+    });
+
+    const startB = document.getElementById('koStartB');
+    if (startB) startB.addEventListener('click', () => {
+      startTimer(buildPhasesB(), 'b', null);
+    });
+  }
+
+  function bindTimerControls() {
+    const pauseBtn = document.getElementById('koPauseBtn');
+    if (pauseBtn) pauseBtn.addEventListener('click', pauseResume);
+
+    const stopBtn = document.getElementById('koStopBtn');
+    if (stopBtn) stopBtn.addEventListener('click', () => {
+      if (confirm('Avslutt og logg økt?')) stopSession();
+    });
+
+    const resetBtn = document.getElementById('koResetBtn');
+    if (resetBtn) resetBtn.addEventListener('click', () => {
+      stopInterval(); timer = null; selectedProgram = null; render();
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
