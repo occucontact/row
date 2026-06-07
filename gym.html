@@ -36,13 +36,14 @@ const CONFIG = {
     { id: "push",   name: "Push" },
     { id: "pull",   name: "Pull" },
     { id: "legs",   name: "Legs" },
+    { id: "core",   name: "Core" },
     { id: "kondis", name: "Kondis" }
   ],
 
   // Split rotation — the order your training days cycle through. Use day
   // ids from `days` above, plus "rest" for off-days. The pill at the top
   // of the app reads this + splitAnchor to compute "what day is today".
-  splitRotation: ["push", "pull", "legs", "kondis"],
+  splitRotation: ["push", "pull", "legs", "core", "kondis"],
 
   // Anchor: pair a real calendar date with which split day fell on it.
   // The rotation advances from this point. Set `date` to a recent day
@@ -1372,6 +1373,61 @@ img, video, canvas, svg { max-width: 100%; }
   color: #38BDF8; letter-spacing: 0.05em; text-transform: uppercase;
 }
 
+/* Kondis PO dashboard */
+.ko-po-link {
+  display: block;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-1);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  transition: background 150ms, border-color 150ms;
+}
+.ko-po-link:hover { background: rgba(255,255,255,0.08); border-color: var(--border-strong); }
+.ko-po-today { margin-bottom: 20px; }
+.ko-po-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-3); text-transform: uppercase; margin-bottom: 10px; }
+.ko-po-today-sess {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.ko-po-today-icon { font-size: 16px; }
+.ko-po-today-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-1); }
+.ko-po-today-dur { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.ko-po-rest { font-size: 13px; color: var(--text-3); padding: 8px 0; }
+.ko-po-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.ko-po-stat {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+}
+.ko-po-stat-val { font-size: 22px; font-weight: 700; color: var(--text-1); line-height: 1; margin-bottom: 4px; }
+.ko-po-stat-label { font-size: 10px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.ko-po-hist-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.ko-po-hist-row:last-child { border-bottom: none; }
+.ko-po-hist-date { color: var(--text-3); min-width: 70px; }
+.ko-po-hist-prog { flex: 1; color: var(--text-1); font-weight: 500; }
+.ko-po-hist-dur { color: var(--text-2); font-variant-numeric: tabular-nums; }
+
 /* ===== Session import modal ===== */
 .sess-header { margin-bottom: 16px; }
 .sess-prog-label { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
@@ -1611,8 +1667,10 @@ img, video, canvas, svg { max-width: 100%; }
       </div>
     </div>
 
+    <div id="poKondisView" style="display:none"></div>
+
     <!-- Exercise -->
-    <div class="po-sub-section">
+    <div class="po-sub-section" id="poSubExercise">
       <div class="po-sub-title">Exercise</div>
       <div class="po-exercise-bar">
         <select class="po-ex-select" id="exSelect"></select>
@@ -1627,7 +1685,7 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <!-- Log a set -->
-    <div class="po-sub-section">
+    <div class="po-sub-section" id="poSubLog">
       <div class="po-sub-title">Log today's top set</div>
       <div class="po-bw-banner" id="bwBanner">Bodyweight — log reps only</div>
       <div class="po-last-set" id="lastSet">
@@ -1663,13 +1721,13 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <!-- Prescription -->
-    <div class="po-sub-section">
+    <div class="po-sub-section" id="poSubRx">
       <div class="po-sub-title">Next session</div>
       <div id="rxWrap"></div>
     </div>
 
     <!-- Stats -->
-    <div class="po-sub-section">
+    <div class="po-sub-section" id="poSubStats">
       <div class="po-sub-title">Stats</div>
       <div class="po-stats-row">
         <div class="po-stat-box">
@@ -1688,7 +1746,7 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <!-- Trend -->
-    <div class="po-sub-section">
+    <div class="po-sub-section" id="poSubTrend">
       <div class="po-sub-title">Trend (last 10 sessions)</div>
       <div class="po-spark-wrap">
         <svg class="po-spark-svg" id="sparkline" viewBox="0 0 300 60" preserveAspectRatio="none">
@@ -1704,7 +1762,7 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
     <!-- History -->
-    <div class="po-sub-section">
+    <div class="po-sub-section" id="poSubHist">
       <div class="po-sub-title">History</div>
       <div id="historyCard">
         <div class="po-empty">Ingen logger ennå.</div>
@@ -1961,9 +2019,8 @@ const PROGRAMS = [
         ]
       },
       {
-        label: 'Kondis – Core · Mobility · Power',
-        dayId: 'kondis',
-        kondisDay: true,
+        label: 'Core – Core · Mobility · Power',
+        dayId: 'core',
         exercises: [
           { name: 'Plank',                        sets: 3, repMin: 30, repMax: 60, bw: true },
           { name: 'Bird-dog',                     sets: 3, repMin: 10, repMax: 10, bw: true },
@@ -1973,6 +2030,12 @@ const PROGRAMS = [
           { name: 'Squat jump',                   sets: 3, repMin: 5,  repMax: 8,  bw: true },
           { name: 'Dumbbell row',                 sets: 3, repMin: 10, repMax: 12 }
         ]
+      },
+      {
+        label: 'Kondis – Treadmill intervals',
+        dayId: 'kondis',
+        kondisDay: true,
+        exercises: []
       }
     ]
   }
@@ -2347,8 +2410,25 @@ const PROGRAMS = [
   }
 
   function renderAll() {
+    const isKondis = state.filterDay === 'kondis';
     renderDayPill();
-    renderFilters(); renderSelect(); renderForm(); renderLastSet();
+    renderFilters();
+
+    // Toggle kondis-specific vs exercise-specific sections
+    const exSections = ['poSubExercise','poSubLog','poSubRx','poSubStats','poSubTrend','poSubHist'];
+    exSections.forEach(id => { const el = $(id); if (el) el.style.display = isKondis ? 'none' : ''; });
+    const kondisView = $('poKondisView');
+    if (kondisView) kondisView.style.display = isKondis ? '' : 'none';
+
+    if (isKondis) {
+      renderKondisView();
+      renderTodaysWorkout();
+      renderPastWorkouts();
+      renderProgramSection();
+      return;
+    }
+
+    renderSelect(); renderForm(); renderLastSet();
     renderRepsRow();
     renderRx(); renderStats(); renderSparkline(); renderHistory();
     renderTodaysWorkout();
@@ -2491,6 +2571,79 @@ const PROGRAMS = [
     });
   }
 
+  function renderKondisView() {
+    const view = $('poKondisView');
+    if (!view) return;
+    let sessions = [];
+    try { sessions = JSON.parse(localStorage.getItem('ko_sessions_v1') || '[]'); } catch(_) {}
+    const todayKey = wtDateKey(new Date());
+    const total = sessions.length;
+    const todaySess = sessions.filter(s => s.date === todayKey);
+
+    // Streak: consecutive days with a session ending today or yesterday
+    function calcStreak(ss) {
+      const days = [...new Set(ss.map(s => s.date))].sort().reverse();
+      let streak = 0;
+      const ref = new Date(todayKey);
+      for (let i = 0; i < days.length; i++) {
+        if (days[i] === wtDateKey(ref)) { streak++; ref.setDate(ref.getDate() - 1); }
+        else break;
+      }
+      return streak;
+    }
+    const streak = calcStreak(sessions);
+
+    // This week (Mon–Sun)
+    const now = new Date();
+    const dayOfWeek = (now.getDay() + 6) % 7; // Mon=0
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() - dayOfWeek);
+    const weekKey = wtDateKey(weekStart);
+    const thisWeek = [...new Set(sessions.map(s => s.date))].filter(d => d >= weekKey).length;
+
+    // Avg duration
+    const withDur = sessions.filter(s => s.durationSec > 0);
+    const avgSec = withDur.length ? Math.round(withDur.reduce((a, s) => a + s.durationSec, 0) / withDur.length) : 0;
+    const avgFmt = avgSec ? fmtSec(avgSec) : '—';
+
+    // Program split
+    const aCount = sessions.filter(s => s.programId === 'a').length;
+    const bCount = sessions.filter(s => s.programId === 'b').length;
+
+    const todayHtml = todaySess.length
+      ? todaySess.map(s =>
+          '<div class="ko-po-today-sess">'
+          + '<span class="ko-po-today-icon">⚡</span>'
+          + '<span class="ko-po-today-name">' + (s.programId === 'a' ? 'Intervalldrag' : 'Pyramide') + (s.rounds ? ' · ' + s.rounds + ' serier' : '') + '</span>'
+          + '<span class="ko-po-today-dur">' + fmtSec(s.durationSec) + '</span>'
+          + '</div>'
+        ).join('')
+      : '<div class="ko-po-rest">No session logged today — <a href="kondisjon.html" style="color:var(--text-1)">go train</a>.</div>';
+
+    const histHtml = sessions.length
+      ? sessions.slice(0, 10).map(s =>
+          '<div class="ko-po-hist-row">'
+          + '<span class="ko-po-hist-date">' + fmtPastDate(s.date) + '</span>'
+          + '<span class="ko-po-hist-prog">' + (s.programId === 'a' ? 'Intervalldrag' : 'Pyramide') + (s.rounds ? ' · ' + s.rounds + 'r' : '') + '</span>'
+          + '<span class="ko-po-hist-dur">' + fmtSec(s.durationSec) + '</span>'
+          + '</div>'
+        ).join('')
+      : '<div class="po-empty">No sessions yet.</div>';
+
+    view.innerHTML =
+      '<a href="kondisjon.html" class="ko-po-link">⚡ Open Kondisjon — treadmill intervals →</a>'
+      + '<div class="ko-po-today"><div class="ko-po-section-label">Today</div>' + todayHtml + '</div>'
+      + '<div class="ko-po-stats-grid">'
+      +   '<div class="ko-po-stat"><div class="ko-po-stat-val">' + (streak || '—') + '</div><div class="ko-po-stat-label">Streak</div></div>'
+      +   '<div class="ko-po-stat"><div class="ko-po-stat-val">' + total + '</div><div class="ko-po-stat-label">Total sessions</div></div>'
+      +   '<div class="ko-po-stat"><div class="ko-po-stat-val">' + thisWeek + '</div><div class="ko-po-stat-label">This week</div></div>'
+      +   '<div class="ko-po-stat"><div class="ko-po-stat-val">' + avgFmt + '</div><div class="ko-po-stat-label">Avg time</div></div>'
+      +   '<div class="ko-po-stat"><div class="ko-po-stat-val">' + aCount + '</div><div class="ko-po-stat-label">Intervalldrag</div></div>'
+      +   '<div class="ko-po-stat"><div class="ko-po-stat-val">' + bCount + '</div><div class="ko-po-stat-label">Pyramide</div></div>'
+      + '</div>'
+      + '<div class="ko-po-section-label" style="margin-top:16px">Session history</div>'
+      + '<div class="ko-po-hist">' + histHtml + '</div>';
+  }
+
   function renderProgramSection() {
     const section = $('progSection');
     if (!section) return;
@@ -2613,6 +2766,11 @@ const PROGRAMS = [
       });
     });
     return byDay;
+  }
+
+  function fmtSec(secs) {
+    const m = Math.floor((secs || 0) / 60), s = (secs || 0) % 60;
+    return m + ':' + String(s).padStart(2, '0');
   }
 
   function fmtPastDate(dk) {
