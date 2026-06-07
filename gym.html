@@ -33,15 +33,16 @@ const CONFIG = {
   // Training split. Most people use Push/Pull/Legs but you can rename
   // these to "Upper", "Lower", "Full Body", "Day A", anything.
   days: [
-    { id: "push", name: "Push" },
-    { id: "pull", name: "Pull" },
-    { id: "legs", name: "Legs" }
+    { id: "push",   name: "Push" },
+    { id: "pull",   name: "Pull" },
+    { id: "legs",   name: "Legs" },
+    { id: "kondis", name: "Kondis" }
   ],
 
   // Split rotation — the order your training days cycle through. Use day
   // ids from `days` above, plus "rest" for off-days. The pill at the top
   // of the app reads this + splitAnchor to compute "what day is today".
-  splitRotation: ["push", "pull", "legs", "rest"],
+  splitRotation: ["push", "pull", "legs", "kondis"],
 
   // Anchor: pair a real calendar date with which split day fell on it.
   // The rotation advances from this point. Set `date` to a recent day
@@ -1331,8 +1332,15 @@ img, video, canvas, svg { max-width: 100%; }
   font-family: inherit; font-size: 14px; font-weight: 600;
   cursor: pointer; text-align: left;
   -webkit-tap-highlight-color: transparent;
+  transition: transform 160ms cubic-bezier(0.34,1.56,0.64,1), background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
-.prog-pick-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--border-strong); }
+.prog-pick-btn:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: var(--border-strong);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.prog-pick-btn:active { transform: scale(0.97); transition-duration: 80ms; }
 .prog-pick-desc { display: block; font-size: 11px; color: var(--text-3); font-weight: 500; margin-top: 3px; }
 .prog-start-btn {
   flex: 1;
@@ -1849,6 +1857,7 @@ const PROGRAMS = [
     days: [
       {
         label: 'Helkropp',
+        dayId: 'push',
         exercises: [
           { name: 'Knebøy',       sets: 3, repMin: 12, repMax: 12 },
           { name: 'Nedtrekk',     sets: 3, repMin: 12, repMax: 12 },
@@ -1869,7 +1878,7 @@ const PROGRAMS = [
     desc: '2 dager · Rygg/Bryst/Skuldre · Lår/Armer · til failure',
     days: [
       {
-        label: 'Dag A – Rygg · Bryst · Skuldre · Legger',
+        label: 'Dag A – Rygg · Bryst · Skuldre · Legger', dayId: 'push',
         exercises: [
           { name: 'Markløft',                        sets: 1, repMin: 5,  repMax: 8  },
           { name: 'Shrugs',                          sets: 1, repMin: 8,  repMax: 12 },
@@ -1889,7 +1898,7 @@ const PROGRAMS = [
         ]
       },
       {
-        label: 'Dag B – Lår · Armer',
+        label: 'Dag B – Lår · Armer', dayId: 'legs',
         exercises: [
           { name: 'Knebøy',                          sets: 1, repMin: 5,  repMax: 8  },
           { name: 'Beinpress',                       sets: 1, repMin: 8,  repMax: 12 },
@@ -1909,56 +1918,60 @@ const PROGRAMS = [
   },
   {
     id: 'coach',
-    name: 'Coach-inspirert program',
+    name: 'PPL 26',
     desc: '4 dager · Push · Pull · Legs · Kondis',
     days: [
       {
-        label: 'Push – Bryst · Skuldre · Triceps',
+        label: 'Push – Chest · Shoulders · Triceps',
+        dayId: 'push',
         exercises: [
-          { name: 'Benkpress',                    sets: 3, repMin: 5,  repMax: 8  },
-          { name: 'Skrå benkpress',               sets: 3, repMin: 8,  repMax: 12 },
-          { name: 'Militærpress',                 sets: 3, repMin: 6,  repMax: 10 },
-          { name: 'Sidehev',                      sets: 3, repMin: 12, repMax: 15 },
-          { name: 'Klap push-up',                 sets: 3, repMin: 5,  repMax: 8,  bw: true },
-          { name: 'Nedpress',                     sets: 3, repMin: 10, repMax: 12 },
+          { name: 'Bench press',                  sets: 3, repMin: 5,  repMax: 8  },
+          { name: 'Incline bench press',          sets: 3, repMin: 8,  repMax: 12 },
+          { name: 'Overhead press',               sets: 3, repMin: 6,  repMax: 10 },
+          { name: 'Lateral raise',                sets: 3, repMin: 12, repMax: 15 },
+          { name: 'Clap push-up',                 sets: 3, repMin: 5,  repMax: 8,  bw: true },
+          { name: 'Tricep pushdown',              sets: 3, repMin: 10, repMax: 12 },
           { name: 'Wall angel',                   sets: 3, repMin: 10, repMax: 10, bw: true }
         ]
       },
       {
-        label: 'Pull – Rygg · Biceps · Bakre skulder',
+        label: 'Pull – Back · Biceps · Rear delt',
+        dayId: 'pull',
         exercises: [
-          { name: 'Nedtrekk foran',               sets: 3, repMin: 6,  repMax: 10 },
-          { name: 'Sittende roing',               sets: 3, repMin: 8,  repMax: 12 },
-          { name: 'Foroverbøyd roing',            sets: 3, repMin: 6,  repMax: 8  },
-          { name: 'Omvendt pec-dec',              sets: 3, repMin: 12, repMax: 15 },
-          { name: 'Bicepscurl',                   sets: 3, repMin: 8,  repMax: 12 },
-          { name: 'Rygghev',                      sets: 3, repMin: 12, repMax: 15, bw: true },
+          { name: 'Lat pulldown',                 sets: 3, repMin: 6,  repMax: 10 },
+          { name: 'Cable row',                    sets: 3, repMin: 8,  repMax: 12 },
+          { name: 'Barbell row',                  sets: 3, repMin: 6,  repMax: 8  },
+          { name: 'Reverse pec-dec',              sets: 3, repMin: 12, repMax: 15 },
+          { name: 'Bicep curl',                   sets: 3, repMin: 8,  repMax: 12 },
+          { name: 'Back extension',               sets: 3, repMin: 12, repMax: 15, bw: true },
           { name: 'Dead bug',                     sets: 3, repMin: 8,  repMax: 10, bw: true }
         ]
       },
       {
-        label: 'Legs – Lår · Glute · Leddehelse',
+        label: 'Legs – Quads · Glutes · Joint health',
+        dayId: 'legs',
         exercises: [
-          { name: 'Knebøy',                       sets: 3, repMin: 5,  repMax: 8  },
+          { name: 'Back squat',                   sets: 3, repMin: 5,  repMax: 8  },
           { name: 'Hip thrust',                   sets: 3, repMin: 10, repMax: 12 },
           { name: 'ATG split squat',              sets: 3, repMin: 6,  repMax: 8,  bw: true },
           { name: 'Nordic hamstring curl',        sets: 3, repMin: 4,  repMax: 6,  bw: true },
-          { name: 'Tibialis hev',                 sets: 3, repMin: 15, repMax: 20, bw: true },
+          { name: 'Tibialis raise',               sets: 3, repMin: 15, repMax: 20, bw: true },
           { name: 'Glute kickback',               sets: 3, repMin: 12, repMax: 15 },
           { name: 'Box jump',                     sets: 3, repMin: 5,  repMax: 5,  bw: true }
         ]
       },
       {
-        label: 'Kondis – Kjernemuskel · Mobilitet · Eksplosivitet',
+        label: 'Kondis – Core · Mobility · Power',
+        dayId: 'kondis',
         kondisDay: true,
         exercises: [
-          { name: 'Planke',                       sets: 3, repMin: 30, repMax: 60, bw: true },
+          { name: 'Plank',                        sets: 3, repMin: 30, repMax: 60, bw: true },
           { name: 'Bird-dog',                     sets: 3, repMin: 10, repMax: 10, bw: true },
-          { name: 'Goblet knebøy',                sets: 3, repMin: 8,  repMax: 10 },
-          { name: 'Enkelbens markløft',           sets: 3, repMin: 8,  repMax: 8  },
+          { name: 'Goblet squat',                 sets: 3, repMin: 8,  repMax: 10 },
+          { name: 'Single-leg deadlift',          sets: 3, repMin: 8,  repMax: 8  },
           { name: 'Lateral lunge',                sets: 3, repMin: 10, repMax: 10 },
           { name: 'Squat jump',                   sets: 3, repMin: 5,  repMax: 8,  bw: true },
-          { name: 'Hantelroing',                  sets: 3, repMin: 10, repMax: 12 }
+          { name: 'Dumbbell row',                 sets: 3, repMin: 10, repMax: 12 }
         ]
       }
     ]
@@ -2364,14 +2377,14 @@ const PROGRAMS = [
     } catch(e) {}
   }
   // ---- Session import modal ----
-  function ensureExercise(progEx) {
+  function ensureExercise(progEx, dayId) {
     let ex = state.exercises.find(e => e.name.toLowerCase() === progEx.name.toLowerCase());
     if (!ex) {
       ex = {
         id: 'prog_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
         name: progEx.name,
-        gym: state.filterGym || (state.gyms[0] ? state.gyms[0].id : 'gym1'),
-        day: state.filterDay || (state.days[0] ? state.days[0].id : 'all'),
+        gym: 'both',
+        day: dayId || state.filterDay || (state.days[0] ? state.days[0].id : 'push'),
         bw: !!progEx.bw,
         repMin: progEx.repMin || 8,
         repMax: progEx.repMax || 12,
@@ -2397,7 +2410,7 @@ const PROGRAMS = [
       const list = $('sessExList');
       list.innerHTML = '';
       day.exercises.forEach((progEx, i) => {
-        const ex = ensureExercise(progEx);
+        const ex = ensureExercise(progEx, day.dayId);
         const todaySets = getTodaySetsFor(ex.id);
         const targetSets = progEx.sets || 1;
         const isDone = todaySets.length >= targetSets;
