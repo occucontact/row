@@ -2466,7 +2466,8 @@ const PROGRAMS = [
 
     $('sessCloseBtn').onclick = () => $('sessModalBg').classList.remove('show');
     $('sessFinishBtn').onclick = () => {
-      progSave({ programId: ps.programId, nextDayIndex: nextDayIdx });
+      // Record that we trained today — auto-advance happens next day on load
+      progSave({ programId: ps.programId, nextDayIndex: dayIdx, lastSessionDate: wtDateKey(new Date()) });
       $('sessModalBg').classList.remove('show');
       renderProgramSection();
     };
@@ -2505,9 +2506,16 @@ const PROGRAMS = [
     }
     const prog = PROGRAMS.find(p => p.id === ps.programId);
     if (!prog) { progSave(null); renderProgramSection(); return; }
+    const todayKey = wtDateKey(new Date());
+    // Auto-advance: if last session was on a previous day, move to next day now
+    if (ps.lastSessionDate && ps.lastSessionDate < todayKey) {
+      const advIdx = ((ps.nextDayIndex || 0) + 1) % prog.days.length;
+      progSave({ programId: ps.programId, nextDayIndex: advIdx, lastSessionDate: null });
+      renderProgramSection(); return;
+    }
     const dayIdx = (ps.nextDayIndex || 0) % prog.days.length;
     const day = prog.days[dayIdx];
-    const todayKey = wtDateKey(new Date());
+    const sessionDoneToday = ps.lastSessionDate === todayKey;
     const todaySets = (logsByDay())[todayKey] || [];
     const loggedNames = new Set(todaySets.map(({ex}) => ex.name.toLowerCase()));
     const doneCount = day.exercises.filter(ex => loggedNames.has(ex.name.toLowerCase())).length;
@@ -2543,7 +2551,7 @@ const PROGRAMS = [
 
     section.innerHTML =
       '<div class="prog-card">' +
-      '<div class="prog-eyebrow">NESTE ØKT · ' + escape(prog.name.toUpperCase()) + progressLabel + '</div>' +
+      '<div class="prog-eyebrow">' + (sessionDoneToday ? 'DAGENS ØKT ✓' : 'DAGENS ØKT') + ' · ' + escape(prog.name.toUpperCase()) + progressLabel + '</div>' +
       '<div class="prog-headline">' + escape(day.label) + '</div>' +
       '<div class="prog-action-row">' +
       '<button class="prog-change-btn" id="progChangeBtn">Bytt program</button>' +
@@ -2562,7 +2570,7 @@ const PROGRAMS = [
       openSessionModal(prog, day, dayIdx, ps);
     });
     $('progNextBtn').addEventListener('click', () => {
-      progSave({ programId: ps.programId, nextDayIndex: nextDayIdx });
+      progSave({ programId: ps.programId, nextDayIndex: nextDayIdx, lastSessionDate: null });
       renderProgramSection();
     });
   }
@@ -4013,8 +4021,8 @@ const PROGRAMS = [
     </div>
     <div class="sess-ex-list" id="sessExList"></div>
     <div class="po-modal-actions">
-      <button class="po-btn po-btn-secondary" id="sessCloseBtn">Lukk</button>
-      <button class="po-btn po-btn-primary" id="sessFinishBtn">Ferdig · neste økt →</button>
+      <button class="po-btn po-btn-secondary" id="sessCloseBtn">Avbryt</button>
+      <button class="po-btn po-btn-primary" id="sessFinishBtn">Fullfør økt</button>
     </div>
   </div>
 </div>
