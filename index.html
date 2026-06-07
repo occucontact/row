@@ -175,9 +175,9 @@ body::after {
 
 /* ===== Component 3: Day Ring ===== */
 .day-ring-wrap {
-  display: flex; flex-wrap: wrap;
-  align-items: center; justify-content: center;
-  gap: 26px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
   padding: 22px;
   margin-bottom: 22px;
   border-radius: 16px;
@@ -229,16 +229,29 @@ body::after {
   margin-top: 2px;
 }
 .day-ring-text {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex; flex-direction: column;
   gap: 6px;
-  max-width: 280px;
 }
 .day-ring-status { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .day-ring-remaining { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
 .day-ring-hours { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
-@media (max-width: 480px) {
-  .day-ring { width: 144px; height: 144px; }
-  .day-ring-percent { font-size: 32px; }
+/* Mobile: stack ring above text */
+@media (max-width: 460px) {
+  .day-ring-wrap {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 16px;
+  }
+  .day-ring { width: 140px; height: 140px; }
+  .day-ring-percent { font-size: 34px; }
+  .day-ring-text {
+    width: 100%;
+    align-items: center;
+    text-align: center;
+  }
   .day-ring-status { font-size: 13px; }
 }
 
