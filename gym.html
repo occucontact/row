@@ -1836,30 +1836,54 @@ const PROGRAMS = [
   {
     id: 'coach',
     name: 'Coach-inspirert program',
-    desc: '2 dager · Funksjon + Atletikk · Leddehelse + Eksplosivitet',
+    desc: '4 dager · Push · Pull · Legs · Kondis',
     days: [
       {
-        label: 'Dag A – Funksjonell styrke + Glute',
+        label: 'Push – Bryst · Skuldre · Triceps',
         exercises: [
-          { name: 'Goblet knebøy',               sets: 3, repMin: 8,  repMax: 10 },
-          { name: 'Hip thrust',                  sets: 3, repMin: 10, repMax: 12 },
-          { name: 'Enkelbens markløft',           sets: 3, repMin: 8,  repMax: 8  },
-          { name: 'Lateral lunge',                sets: 3, repMin: 10, repMax: 10 },
-          { name: 'Glute kickback',               sets: 3, repMin: 12, repMax: 15 },
-          { name: 'Planke',                       sets: 3, repMin: 30, repMax: 60, bw: true },
-          { name: 'Bird-dog',                     sets: 3, repMin: 10, repMax: 10, bw: true }
+          { name: 'Benkpress',                    sets: 3, repMin: 5,  repMax: 8  },
+          { name: 'Skrå benkpress',               sets: 3, repMin: 8,  repMax: 12 },
+          { name: 'Militærpress',                 sets: 3, repMin: 6,  repMax: 10 },
+          { name: 'Sidehev',                      sets: 3, repMin: 12, repMax: 15 },
+          { name: 'Klap push-up',                 sets: 3, repMin: 5,  repMax: 8,  bw: true },
+          { name: 'Nedpress',                     sets: 3, repMin: 10, repMax: 12 },
+          { name: 'Wall angel',                   sets: 3, repMin: 10, repMax: 10, bw: true }
         ]
       },
       {
-        label: 'Dag B – Leddehelse + Holdning + Eksplosivitet',
+        label: 'Pull – Rygg · Biceps · Bakre skulder',
         exercises: [
+          { name: 'Nedtrekk foran',               sets: 3, repMin: 6,  repMax: 10 },
+          { name: 'Sittende roing',               sets: 3, repMin: 8,  repMax: 12 },
+          { name: 'Foroverbøyd roing',            sets: 3, repMin: 6,  repMax: 8  },
+          { name: 'Omvendt pec-dec',              sets: 3, repMin: 12, repMax: 15 },
+          { name: 'Bicepscurl',                   sets: 3, repMin: 8,  repMax: 12 },
+          { name: 'Rygghev',                      sets: 3, repMin: 12, repMax: 15, bw: true },
+          { name: 'Dead bug',                     sets: 3, repMin: 8,  repMax: 10, bw: true }
+        ]
+      },
+      {
+        label: 'Legs – Lår · Glute · Leddehelse',
+        exercises: [
+          { name: 'Knebøy',                       sets: 3, repMin: 5,  repMax: 8  },
+          { name: 'Hip thrust',                   sets: 3, repMin: 10, repMax: 12 },
           { name: 'ATG split squat',              sets: 3, repMin: 6,  repMax: 8,  bw: true },
           { name: 'Nordic hamstring curl',        sets: 3, repMin: 4,  repMax: 6,  bw: true },
           { name: 'Tibialis hev',                 sets: 3, repMin: 15, repMax: 20, bw: true },
-          { name: 'Dead bug',                     sets: 3, repMin: 8,  repMax: 10, bw: true },
-          { name: 'Wall angel',                   sets: 3, repMin: 10, repMax: 10, bw: true },
-          { name: 'Box jump',                     sets: 3, repMin: 5,  repMax: 5,  bw: true },
-          { name: 'Klap push-up',                 sets: 3, repMin: 5,  repMax: 8,  bw: true }
+          { name: 'Glute kickback',               sets: 3, repMin: 12, repMax: 15 },
+          { name: 'Box jump',                     sets: 3, repMin: 5,  repMax: 5,  bw: true }
+        ]
+      },
+      {
+        label: 'Kondis – Kjernemuskel · Mobilitet · Eksplosivitet',
+        exercises: [
+          { name: 'Planke',                       sets: 3, repMin: 30, repMax: 60, bw: true },
+          { name: 'Bird-dog',                     sets: 3, repMin: 10, repMax: 10, bw: true },
+          { name: 'Goblet knebøy',                sets: 3, repMin: 8,  repMax: 10 },
+          { name: 'Enkelbens markløft',           sets: 3, repMin: 8,  repMax: 8  },
+          { name: 'Lateral lunge',                sets: 3, repMin: 10, repMax: 10 },
+          { name: 'Squat jump',                   sets: 3, repMin: 5,  repMax: 8,  bw: true },
+          { name: 'Hantelroing',                  sets: 3, repMin: 10, repMax: 12 }
         ]
       }
     ]
