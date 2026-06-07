@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0a0b">
 <title>Progressive Overload Coach</title>
 <script src="profile.js"></script>
+<script src="locale.js"></script>
 <script src="topbar.js" defer></script>
 
 <!-- =============================================================
@@ -1285,7 +1286,7 @@ img, video, canvas, svg { max-width: 100%; }
         <span class="wt-unit" id="wtUnit">kg</span>
       </div>
       <div class="wt-delta hidden" id="wtDelta"></div>
-      <div class="wt-streak hidden" id="wtStreak">🔥<span id="wtStreakNum">0 day streak</span></div>
+      <div class="wt-streak hidden" id="wtStreak">🔥<span id="wtStreakNum">0 dagers streak</span></div>
 
       <div class="wt-empty" id="wtEmpty">Log your first weight to start tracking.</div>
 
@@ -1372,7 +1373,7 @@ img, video, canvas, svg { max-width: 100%; }
       <input type="file" id="wtFileCamera" accept="image/*" capture="environment" style="display:none">
       <input type="file" id="wtFileLibrary" accept="image/*" style="display:none">
       <div class="wt-photo-grid" id="wtPhotoGrid">
-        <div class="wt-photo-empty">No photos yet · tap Take Photo to start</div>
+        <div class="wt-photo-empty">Ingen bilder ennå · trykk Ta Bilde for å starte</div>
       </div>
     </div>
   </div>
@@ -1465,7 +1466,7 @@ img, video, canvas, svg { max-width: 100%; }
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
         </button>
       </div>
-      <div class="po-no-ex" id="noExMsg" style="display:none">No exercises here yet. Tap <strong>+</strong> to add one.</div>
+      <div class="po-no-ex" id="noExMsg" style="display:none">Ingen øvelser ennå. Trykk <strong>+</strong> for å legge til.</div>
     </div>
 
     <!-- Log a set -->
@@ -1549,7 +1550,7 @@ img, video, canvas, svg { max-width: 100%; }
     <div class="po-sub-section">
       <div class="po-sub-title">History</div>
       <div id="historyCard">
-        <div class="po-empty">No logs yet.</div>
+        <div class="po-empty">Ingen logger ennå.</div>
       </div>
     </div>
 
@@ -1573,7 +1574,7 @@ img, video, canvas, svg { max-width: 100%; }
           <button class="po-tw-done-btn" id="poTwDoneBtn" type="button">Mark workout done</button>
         </div>
         <ul class="po-tw-list" id="poTwList"></ul>
-        <div class="po-tw-empty" id="poTwEmpty">No sets logged today — log one above and it'll appear here.</div>
+        <div class="po-tw-empty" id="poTwEmpty">Ingen sett logget i dag — logg ett over så dukker det opp her.</div>
       </div>
 
       <button type="button" class="po-tw-past-toggle" id="poTwPastToggle" aria-expanded="false">
@@ -1603,7 +1604,7 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
     <label class="po-bw-toggle">
       <input type="checkbox" id="exBw">
-      Bodyweight (track reps only, no weight)
+      Kroppsvekt (kun reps, ingen vekt)
     </label>
     <div class="po-field" id="exStartWeightField">
       <label style="font-size:11px;color:var(--text-3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase">Starting weight</label>
@@ -1962,7 +1963,7 @@ img, video, canvas, svg { max-width: 100%; }
     const ex = getCurrentEx();
     const logs = ex ? getLogs().slice().reverse() : [];
     if (!logs.length) {
-      wrap.innerHTML = '<div class="po-empty">No logs yet.</div>';
+      wrap.innerHTML = '<div class="po-empty">Ingen logger ennå.</div>';
       return;
     }
     wrap.innerHTML = logs.slice(0, 12).map((l, i) => {
@@ -2009,7 +2010,7 @@ img, video, canvas, svg { max-width: 100%; }
   function todayDateLabel() {
     const d = new Date();
     const dows = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-    const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const mons = nb.MONTHS_SHORT;
     return dows[d.getDay()] + ', ' + mons[d.getMonth()] + ' ' + d.getDate();
   }
   function isRestName(name) { return /^rest\b/i.test(name || ''); }
@@ -2113,7 +2114,7 @@ img, video, canvas, svg { max-width: 100%; }
     const [y, m, d] = dk.split('-').map(Number);
     const dt = new Date(y, m - 1, d);
     const dows = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-    const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const mons = nb.MONTHS_SHORT;
     return dows[dt.getDay()] + ' ' + mons[dt.getMonth()] + ' ' + dt.getDate();
   }
 
@@ -2140,12 +2141,12 @@ img, video, canvas, svg { max-width: 100%; }
 
     const eyebrow = $('poTwDateLabel');
     const dows = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-    const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const mons = nb.MONTHS_SHORT;
     const d = new Date();
     eyebrow.textContent = 'TODAY · ' + dows[d.getDay()] + ', ' + mons[d.getMonth()] + ' ' + d.getDate();
 
     $('poTwSetCount').textContent = sum.totalSets;
-    $('poTwTotalVol').textContent = Math.round(sum.totalVol).toLocaleString() + ' ' + u + ' lifted';
+    $('poTwTotalVol').textContent = Math.round(sum.totalVol).toLocaleString() + ' ' + u + ' løftet';
 
     const list = $('poTwList');
     const empty = $('poTwEmpty');
@@ -2186,7 +2187,7 @@ img, video, canvas, svg { max-width: 100%; }
     $('poTwPastCount').textContent = past.length;
     const body = $('poTwPastBody');
     if (!past.length) {
-      body.innerHTML = '<div class="po-tw-past-empty">No past workouts yet.</div>';
+      body.innerHTML = '<div class="po-tw-past-empty">Ingen tidligere treningsøkter.</div>';
       return;
     }
     const u = state.units;
@@ -2199,7 +2200,7 @@ img, video, canvas, svg { max-width: 100%; }
         + '<div class="po-tw-past-day-h">'
         +   '<span class="po-tw-past-day-date">' + fmtPastDate(dk) + '</span>'
         +   '<span class="po-tw-past-day-summary">'
-        +     sum.totalSets + ' sets · ' + Math.round(sum.totalVol).toLocaleString() + ' ' + u
+        +     sum.totalSets + ' sett · ' + Math.round(sum.totalVol).toLocaleString() + ' ' + u
         +     (isDone ? ' <span class="po-tw-past-day-done">DONE</span>' : '')
         +   '</span>'
         + '</div>'
@@ -2717,7 +2718,7 @@ img, video, canvas, svg { max-width: 100%; }
       cursor.setDate(cursor.getDate() - 1);
     }
     if (streak >= 2) {
-      $('wtStreakNum').textContent = streak + ' day streak';
+      $('wtStreakNum').textContent = streak + ' dagers streak';
       el.classList.remove('hidden');
     } else {
       el.classList.add('hidden');
@@ -3007,7 +3008,7 @@ img, video, canvas, svg { max-width: 100%; }
   }
   function photoFmtDate(key) {
     const d = wtParseKey(key);
-    const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mons = nb.MONTHS_MIX;
     return mons[d.getMonth()] + ' ' + d.getDate();
   }
   function photoCurrentWeight() {
@@ -3017,7 +3018,7 @@ img, video, canvas, svg { max-width: 100%; }
   function photosRender() {
     const grid = $('wtPhotoGrid');
     if (!photos.length) {
-      grid.innerHTML = '<div class="wt-photo-empty">No photos yet · tap Take Photo to start</div>';
+      grid.innerHTML = '<div class="wt-photo-empty">Ingen bilder ennå · trykk Ta Bilde for å starte</div>';
     } else {
       grid.innerHTML = photos.map(p =>
         '<button class="wt-photo-card" data-id="' + p.id + '" type="button">' +
@@ -3183,7 +3184,7 @@ img, video, canvas, svg { max-width: 100%; }
   // Format a delta with arrow + sign
   function fmtDelta(diff, units) {
     if (diff == null) return '';
-    if (Math.abs(diff) < 0.05) return '· no change';
+    if (Math.abs(diff) < 0.05) return '· ingen endring';
     const sign = diff > 0 ? '+' : '−';
     return '· ' + sign + Math.abs(diff).toFixed(1) + ' ' + units;
   }

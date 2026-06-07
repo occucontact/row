@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Finances</title>
 <script src="profile.js"></script>
+<script src="locale.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
@@ -1681,7 +1682,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         <span class="nw-chart-delta" id="nwActivityCount">—</span>
       </div>
       <div class="nw-activity-list" id="nwActivityList"></div>
-      <div class="nw-activity-empty" id="nwActivityEmpty">No activity yet — add your first account.</div>
+      <div class="nw-activity-empty" id="nwActivityEmpty">Ingen aktivitet ennå — legg til din første konto.</div>
     </div>
 
     <div class="card-grid" style="gap:10px">
@@ -1744,7 +1745,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <div id="subsCount" style="font-size:11px;color:var(--text-tertiary)"></div>
     </div>
     <div id="subsList"></div>
-    <div class="empty-state" id="subsEmpty">No subscriptions yet</div>
+    <div class="empty-state" id="subsEmpty">Ingen abonnementer ennå</div>
     <div class="quick-add" style="flex-wrap:wrap;gap:6px">
       <input type="text" placeholder="Service (e.g. Netflix)" id="subName" style="flex:1.5;min-width:120px" />
       <input type="number" placeholder="Amount" id="subAmount" step="0.01" style="flex:1;max-width:100px" />
@@ -1761,7 +1762,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       </select>
       <label class="date-field" title="Next renewal date" style="min-width:150px"><span class="date-emoji" aria-hidden="true">📅</span><input type="date" id="subRenewal" /></label>
       <select id="subFromCat" title="Which net worth account to deduct from" style="padding:6px 10px;border:0.5px solid var(--border);border-radius:var(--radius-md);font-size:12px;font-family:inherit;background:var(--bg-card);color:var(--text-primary);min-width:130px">
-        <option value="">No accounts yet</option>
+        <option value="">Ingen kontoer ennå</option>
       </select>
       <label class="sub-auto-toggle" title="Auto-deduct from the linked account on each renewal">
         <input type="checkbox" id="subAutoDeduct" />
@@ -1792,7 +1793,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         <option value="GBP">GBP</option>
       </select>
       <select id="ordFromCat" class="ord-input ord-input-from" title="Which net worth account this comes out of">
-        <option value="">No accounts yet</option>
+        <option value="">Ingen kontoer ennå</option>
       </select>
       <label class="date-field ord-input-date" title="Expected arrival"><span class="date-emoji" aria-hidden="true">📅</span><input type="date" id="ordArrival" /></label>
       <button class="ord-add-btn" id="ordAddBtn" onclick="window.__addOrder && window.__addOrder()">+ Add Order</button>
@@ -1860,7 +1861,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   <div id="wishList"></div>
   <div class="wish-empty-card" id="wishEmpty">
     <div class="wish-empty-icon">🎯</div>
-    <div class="wish-empty-title">No wishes yet</div>
+    <div class="wish-empty-title">Ingen ønsker ennå</div>
     <div class="wish-empty-sub">Add anything you're saving for — the dashboard will calculate what % of your net worth it'd cost.</div>
   </div>
 </div>
@@ -1973,7 +1974,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const symbol = currencyEl ? currencyEl.value : 'CHF';
     const rate = exchangeRates[symbol] || 1;
     const num = (Number(amountCHF) || 0) * rate;
-    return symbol + ' ' + num.toLocaleString('en-US', { minimumFractionDigits: num % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+    return symbol + ' ' + num.toLocaleString('nb-NO', { minimumFractionDigits: num % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
   }
 
   function renderNetWorthCategory(cat) {
@@ -2118,10 +2119,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const yesterday = today - 86400000;
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     if (dayStart === today) {
-      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return d.toLocaleTimeString('nb-NO', { hour: 'numeric', minute: '2-digit' });
     }
     if (dayStart === yesterday) return 'yest';
-    const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mons = nb.MONTHS_MIX;
     return mons[d.getMonth()] + ' ' + d.getDate();
   }
   function renderActivity() {
@@ -2451,7 +2452,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffDays = Math.round((dayStart - todayStart) / (1000 * 60 * 60 * 24));
-    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const dateLabel = d.toLocaleDateString('nb-NO', { weekday: 'short', month: 'short', day: 'numeric' });
     let prefix = '';
     if (diffDays < 0) prefix = 'past · ';
     else if (diffDays === 0) prefix = 'today · ';
@@ -2522,7 +2523,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       cost.style.cssText = 'text-align:right;line-height:1.1';
       const bigNum = fmtMoney(m);
       const origHint = (it.entered_currency && it.entered_currency !== 'CHF' && it.entered_amount != null)
-        ? '<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">billed ' + it.entered_currency + ' ' + Number(it.entered_amount).toLocaleString('en-US', { minimumFractionDigits: it.entered_amount % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 }) + ' / ' + it.period + '</div>'
+        ? '<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">billed ' + it.entered_currency + ' ' + Number(it.entered_amount).toLocaleString('nb-NO', { minimumFractionDigits: it.entered_amount % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 }) + ' / ' + it.period + '</div>'
         : (it.period !== 'monthly'
             ? '<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px">billed ' + fmtMoney(it.amount) + ' / ' + it.period + '</div>'
             : '');
@@ -2583,7 +2584,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const accounts = (typeof listAllNwAccounts === 'function') ? listAllNwAccounts() : [];
     const ICONS = { bank: '🏦', stocks: '📈', crypto: '🪙', other: '💼' };
     if (!accounts.length) {
-      sel.innerHTML = '<option value="">No accounts yet</option>';
+      sel.innerHTML = '<option value="">Ingen kontoer ennå</option>';
       sel.disabled = true;
       return;
     }
@@ -2661,7 +2662,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const accounts = (typeof listAllNwAccounts === 'function') ? listAllNwAccounts() : [];
     const ICONS = { bank: '🏦', stocks: '📈', crypto: '🪙', other: '💼' };
     const currentFrom = (it.fromCat && it.fromAccount) ? (it.fromCat + '::' + it.fromAccount) : '';
-    const fromOpts = '<option value="">No account linked</option>' + accounts.map(a => {
+    const fromOpts = '<option value="">Ingen konto tilkoblet</option>' + accounts.map(a => {
       const v = a.catKey + '::' + a.itemName;
       return '<option value="' + v + '"' + (v === currentFrom ? ' selected' : '') + '>' + ICONS[a.catKey] + ' ' + escapeHtml(a.itemName) + '</option>';
     }).join('');
@@ -2840,7 +2841,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
           '<div class="wish-row-h">'
         + '<div class="wish-row-info">'
         +   '<div class="wish-row-name">' + escapeHtml(it.name) + '</div>'
-        +   '<div class="wish-row-meta">' + (it.entered_currency || 'CHF') + ' ' + Number(it.entered_amount != null ? it.entered_amount : it.amount).toLocaleString('en-US', {maximumFractionDigits: 2}) + ' · added ' + fmtActivityDate(it.ts || Date.now()) + '</div>'
+        +   '<div class="wish-row-meta">' + (it.entered_currency || 'CHF') + ' ' + Number(it.entered_amount != null ? it.entered_amount : it.amount).toLocaleString('nb-NO', {maximumFractionDigits: 2}) + ' · lagt til ' + fmtActivityDate(it.ts || Date.now()) + '</div>'
         + '</div>'
         + '<div class="wish-row-amt-wrap">'
         +   '<div class="wish-row-amt">' + fmtMoney(cost) + '</div>'
@@ -2931,7 +2932,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffDays = Math.round((dayStart - todayStart) / 86400000);
-    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const dateLabel = d.toLocaleDateString('nb-NO', { weekday: 'short', month: 'short', day: 'numeric' });
     let cls = '', prefix = '';
     if (diffDays < 0)        { cls = 'past';  prefix = 'late · '; }
     else if (diffDays === 0) { cls = 'today'; prefix = 'today · '; }
@@ -2966,7 +2967,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     const prev = sel.value;
     const ICONS = { bank: '🏦', stocks: '📈', crypto: '🪙', other: '💼' };
     if (!accounts.length) {
-      sel.innerHTML = '<option value="">No accounts yet</option>';
+      sel.innerHTML = '<option value="">Ingen kontoer ennå</option>';
       sel.disabled = true;
       return;
     }
@@ -3023,7 +3024,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       const arr = ordFmtArrival(o.date);
       const arrHtml = arr
         ? '<span class="ord-meta-pill date ' + arr.cls + '">' + arr.label + '</span>'
-        : '<span class="ord-meta-pill date">no arrival</span>';
+        : '<span class="ord-meta-pill date">ingen ankomst</span>';
       const row = document.createElement('div');
       row.className = 'ord-card cat-' + (o.fromCat || 'bank') + (isDeducted ? ' is-deducted' : '');
       const footHtml = isDeducted

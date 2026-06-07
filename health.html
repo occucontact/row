@@ -7,6 +7,7 @@
 <meta name="color-scheme" content="dark">
 <title>Daily Stack — Customizable Template</title>
 <script src="profile.js"></script>
+<script src="locale.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
@@ -472,7 +473,7 @@ main {
     <div class="stack-head">
       <div class="sf-eyebrow">Daily stack</div>
       <div class="sf-title">Tap each as you take it</div>
-      <div class="stack-progress-text" id="stackProgressText">— / — taken today · resets at 6 AM</div>
+      <div class="stack-progress-text" id="stackProgressText">— / — tatt i dag · nullstilles kl. 06:00</div>
     </div>
 
     <div class="stack-progress-track">
@@ -533,10 +534,10 @@ main {
   ];
 
   const STACK_WINDOWS = [
-    { key: 'morning', icon: '🌅', title: 'Morning', time: '7–10 AM', cutoffHour: 10 },
-    { key: 'lunch',   icon: '🍽️', title: 'Lunch',   time: '12–2 PM', cutoffHour: 14 },
-    { key: 'evening', icon: '🌙', title: 'Evening', time: '9–11 PM', cutoffHour: 23 },
-    { key: 'anytime', icon: '⏱️', title: 'Anytime', time: 'No fixed window', cutoffHour: null },
+    { key: 'morning', icon: '🌅', title: 'Morgen',       time: '07–10',         cutoffHour: 10 },
+    { key: 'lunch',   icon: '🍽️', title: 'Lunsj',        time: '12–14',         cutoffHour: 14 },
+    { key: 'evening', icon: '🌙', title: 'Kveld',         time: '21–23',         cutoffHour: 23 },
+    { key: 'anytime', icon: '⏱️', title: 'Når som helst', time: 'Ingen fast tid', cutoffHour: null },
   ];
 
   // ====== SUPPLEMENT DATABASE — researched defaults ======
@@ -685,7 +686,7 @@ main {
     const totalCount = items.length;
     const takenCount = items.filter(i => taken[i.id]).length;
     document.getElementById('stackProgressText').textContent =
-      `${takenCount} / ${totalCount} taken today · resets at 6 AM`;
+      `${takenCount} / ${totalCount} tatt i dag · nullstilles kl. 06:00`;
     const pct = totalCount === 0 ? 0 : (takenCount / totalCount) * 100;
     document.getElementById('stackProgressBar').style.width = pct + '%';
 
@@ -740,7 +741,7 @@ main {
     });
 
     if (groupsEl.children.length === 0) {
-      groupsEl.innerHTML = `<div class="stack-window-empty">No items yet — add one below to start your stack.</div>`;
+      groupsEl.innerHTML = `<div class="stack-window-empty">Ingen elementer ennå — legg til ett under for å starte.</div>`;
     }
 
     // Sync ticker after every render
