@@ -1263,6 +1263,78 @@ img, video, canvas, svg { max-width: 100%; }
   .wt-compare-meta-line { font-size: 11px; }
 }
 
+/* ---- Treningsprogram ---- */
+.prog-section { margin-bottom: 18px; }
+.prog-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(110,231,183,0.16);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+.prog-card.is-none {
+  border-color: var(--border);
+  background: rgba(255,255,255,0.025);
+}
+.prog-eyebrow {
+  font-size: 10px; letter-spacing: 0.18em; font-weight: 700;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
+}
+.prog-headline {
+  font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
+  margin-bottom: 14px; line-height: 1.3;
+}
+.prog-action-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.prog-change-btn {
+  padding: 9px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-2); border-radius: 10px;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.prog-change-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-1); }
+.prog-ex-list { display: flex; flex-direction: column; gap: 3px; }
+.prog-ex-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 8px;
+}
+.prog-ex-row.is-done { background: rgba(110,231,183,0.06); }
+.prog-ex-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: rgba(255,255,255,0.04);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: transparent;
+}
+.prog-ex-row.is-done .prog-ex-check { background: var(--good); border-color: var(--good); color: #000; }
+.prog-ex-name { flex: 1; font-size: 13px; font-weight: 500; }
+.prog-ex-row.is-done .prog-ex-name { color: var(--text-3); }
+.prog-ex-meta { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.prog-next-btn {
+  width: 100%; margin-top: 12px; padding: 11px;
+  background: transparent;
+  border: 1px solid rgba(110,231,183,0.25);
+  color: var(--good); border-radius: 10px;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.03em;
+  -webkit-tap-highlight-color: transparent;
+}
+.prog-next-btn:hover { background: rgba(110,231,183,0.06); }
+.prog-pick-title { font-size: 13px; color: var(--text-2); margin: 0 0 12px; }
+.prog-pick-row { display: flex; flex-direction: column; gap: 8px; }
+.prog-pick-btn {
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  color: var(--text-1); border-radius: 12px;
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.prog-pick-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--border-strong); }
+.prog-pick-desc { display: block; font-size: 11px; color: var(--text-3); font-weight: 500; margin-top: 3px; }
+
 .hidden { display: none !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1433,6 +1505,9 @@ img, video, canvas, svg { max-width: 100%; }
     </div>
 
   </div>
+
+  <!-- Treningsprogram -->
+  <div class="prog-section" id="progSection"></div>
 
   <div class="po-header">
     <h1 class="po-title" id="appTitle">Progressive Overload Coach</h1>
@@ -1691,6 +1766,75 @@ img, video, canvas, svg { max-width: 100%; }
 </div>
 
 <script>
+// Training programs — sourced from CLAUDE JUNI/OCCU.NO
+const PROGRAMS = [
+  {
+    id: 'helkropp',
+    name: 'Helkroppsprogram',
+    desc: '1–2×/uke · 9 øvelser · 2-3 sett · full kropp',
+    days: [
+      {
+        label: 'Helkropp',
+        exercises: [
+          { name: 'Knebøy',       sets: 3, repMin: 12, repMax: 12 },
+          { name: 'Nedtrekk',     sets: 3, repMin: 12, repMax: 12 },
+          { name: 'Roing',        sets: 2, repMin: 10, repMax: 10 },
+          { name: 'Benkpress',    sets: 3, repMin: 8,  repMax: 8  },
+          { name: 'Dips',         sets: 3, repMin: 0,  repMax: 0,  bw: true },
+          { name: 'Bicepscurl',   sets: 3, repMin: 10, repMax: 10 },
+          { name: 'Militærpress', sets: 3, repMin: 8,  repMax: 8  },
+          { name: 'Rygghev',      sets: 3, repMin: 15, repMax: 15, bw: true },
+          { name: 'Sit-ups',      sets: 3, repMin: 12, repMax: 15, bw: true }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'splitt2',
+    name: 'Effektiv 2-splitt',
+    desc: '2 dager · Rygg/Bryst/Skuldre · Lår/Armer · til failure',
+    days: [
+      {
+        label: 'Dag A – Rygg · Bryst · Skuldre · Legger',
+        exercises: [
+          { name: 'Markløft',                        sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Shrugs',                          sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Rygghev',                         sets: 1, repMin: 0,  repMax: 0,  bw: true },
+          { name: 'Foroverbøyd roing',               sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Nedtrekk foran',                  sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Sittende roing',                  sets: 1, repMin: 12, repMax: 15 },
+          { name: 'Benkpress',                       sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Skrå brystpress',                 sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Kabelkryssdrag',                  sets: 1, repMin: 12, repMax: 15 },
+          { name: 'Militærpress',                    sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Sidehev',                         sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Omvendt pec-dec',                 sets: 1, repMin: 12, repMax: 15 },
+          { name: 'Stående tåhev',                   sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Donkey tåhev',                    sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Sittende tåhev',                  sets: 1, repMin: 12, repMax: 15 }
+        ]
+      },
+      {
+        label: 'Dag B – Lår · Armer',
+        exercises: [
+          { name: 'Knebøy',                          sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Beinpress',                       sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Utspark',                         sets: 1, repMin: 12, repMax: 15 },
+          { name: 'Markløft strake bein',            sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Liggende lårcurls',               sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Stående lårcurls',                sets: 1, repMin: 12, repMax: 15 },
+          { name: 'Bicepscurls med stang',           sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Hantelcurls',                     sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Enarms hammer curls',             sets: 1, repMin: 12, repMax: 15 },
+          { name: 'Fransk press',                    sets: 1, repMin: 5,  repMax: 8  },
+          { name: 'Nedpress',                        sets: 1, repMin: 8,  repMax: 12 },
+          { name: 'Enarms tricepspress over hodet',  sets: 1, repMin: 12, repMax: 15 }
+        ]
+      }
+    ]
+  }
+];
+
 (function() {
   // ============================================================
   // STATE — all logs + edits live in browser localStorage. Each
@@ -2066,6 +2210,7 @@ img, video, canvas, svg { max-width: 100%; }
     renderRx(); renderStats(); renderSparkline(); renderHistory();
     renderTodaysWorkout();
     renderPastWorkouts();
+    renderProgramSection();
     // Pre-fill weight input with last logged weight (or starting weight)
     const ex = getCurrentEx();
     if (ex && !ex.bw) {
@@ -2073,6 +2218,86 @@ img, video, canvas, svg { max-width: 100%; }
       const w = logs.length ? logs[logs.length - 1].weight : (ex.startWeight || 0);
       $('weightInput').value = w;
     }
+  }
+
+  // ============================================================
+  // TRAINING PROGRAM SECTION
+  // ============================================================
+  const PROG_KEY = 'po_prog_state';
+  function progLoad() {
+    try { const r = localStorage.getItem(PROG_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+  }
+  function progSave(s) {
+    try {
+      if (s == null) localStorage.removeItem(PROG_KEY);
+      else localStorage.setItem(PROG_KEY, JSON.stringify(s));
+    } catch(e) {}
+  }
+  function renderProgramSection() {
+    const section = $('progSection');
+    if (!section) return;
+    const ps = progLoad();
+    if (!ps) {
+      section.innerHTML =
+        '<div class="prog-card is-none">' +
+        '<div class="prog-eyebrow">TRENINGSPROGRAM</div>' +
+        '<p class="prog-pick-title">Velg et program å følge:</p>' +
+        '<div class="prog-pick-row">' +
+        PROGRAMS.map(p =>
+          '<button class="prog-pick-btn" data-prog="' + p.id + '">' +
+          escape(p.name) +
+          '<span class="prog-pick-desc">' + escape(p.desc) + '</span>' +
+          '</button>'
+        ).join('') +
+        '</div></div>';
+      section.querySelectorAll('.prog-pick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          progSave({ programId: btn.dataset.prog, nextDayIndex: 0 });
+          renderProgramSection();
+        });
+      });
+      return;
+    }
+    const prog = PROGRAMS.find(p => p.id === ps.programId);
+    if (!prog) { progSave(null); renderProgramSection(); return; }
+    const dayIdx = (ps.nextDayIndex || 0) % prog.days.length;
+    const day = prog.days[dayIdx];
+    // Check which exercises from this day have been logged today
+    const todayKey = wtDateKey(new Date());
+    const todaySets = (logsByDay())[todayKey] || [];
+    const loggedNames = new Set(todaySets.map(({ex}) => ex.name.toLowerCase()));
+    const doneCount = day.exercises.filter(ex => loggedNames.has(ex.name.toLowerCase())).length;
+    const progressLabel = doneCount > 0 ? (' · ' + doneCount + '/' + day.exercises.length + ' logget') : '';
+    const nextDayIdx = (dayIdx + 1) % prog.days.length;
+    const nextLabel = prog.days[nextDayIdx].label;
+    const exListHtml = day.exercises.map(ex => {
+      const done = loggedNames.has(ex.name.toLowerCase());
+      const repMeta = ex.bw ? 'maks' : (ex.repMin === ex.repMax ? ex.repMin + ' reps' : ex.repMin + '–' + ex.repMax + ' reps');
+      const setMeta = ex.bw ? '' : (' · ' + ex.sets + ' sett');
+      return '<div class="prog-ex-row' + (done ? ' is-done' : '') + '">' +
+        '<div class="prog-ex-check">' + (done ? '✓' : '') + '</div>' +
+        '<span class="prog-ex-name">' + escape(ex.name) + '</span>' +
+        '<span class="prog-ex-meta">' + repMeta + setMeta + '</span>' +
+        '</div>';
+    }).join('');
+    section.innerHTML =
+      '<div class="prog-card">' +
+      '<div class="prog-eyebrow">NESTE ØKT · ' + escape(prog.name.toUpperCase()) + progressLabel + '</div>' +
+      '<div class="prog-headline">' + escape(day.label) + '</div>' +
+      '<div class="prog-action-row">' +
+      '<button class="prog-change-btn" id="progChangeBtn">Bytt program</button>' +
+      '</div>' +
+      '<div class="prog-ex-list">' + exListHtml + '</div>' +
+      '<button class="prog-next-btn" id="progNextBtn">Ferdig · neste opp: ' + escape(nextLabel) + ' →</button>' +
+      '</div>';
+    $('progChangeBtn').addEventListener('click', () => {
+      progSave(null);
+      renderProgramSection();
+    });
+    $('progNextBtn').addEventListener('click', () => {
+      progSave({ programId: ps.programId, nextDayIndex: nextDayIdx });
+      renderProgramSection();
+    });
   }
 
   // ============================================================
@@ -3307,7 +3532,7 @@ img, video, canvas, svg { max-width: 100%; }
   const SUPABASE_URL = 'https://yntpsdcjqeewgcozfqxg.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg';
   const APP_KEY = (window.activeProfile ? window.activeProfile.toLowerCase() + '-' : '') + 'po-coach';
-  const PC_SYNCED_KEYS = ['po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos'];
+  const PC_SYNCED_KEYS = ['po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos', 'po_prog_state'];
 
   let pcSupa = null;
   let pcPushTimer = null;
