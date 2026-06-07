@@ -109,15 +109,25 @@
   background: linear-gradient(180deg, rgba(125, 211, 252, 0.65), rgba(110, 231, 183, 0.65));
 }
 
-@media (max-width: 480px) {
-  .topbar { padding-left: 10px; padding-right: 10px; gap: 4px; }
+/* Mobile: two-row layout — stats on top, nav below */
+.topbar-row-break { display: none; }
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: max(10px, env(safe-area-inset-top)) 10px 8px;
+  }
+  /* Row 1: stats — each takes ~1/3 of the bar */
+  #topbarGoals, #topbarStack, .topbar-water-wrap { flex: 1 1 28%; }
+  /* Force a line break between stats and nav */
+  .topbar-row-break { display: block; flex: 0 0 100%; height: 0; }
+  /* Row 2: nav — equal-width pills */
+  .topbar-nav { flex: 1 1 0; }
+  /* Compact all pills */
   .topbar-pill, .topbar-water-pill { padding: 7px 9px; gap: 5px; }
-  .topbar-pill-label { font-size: 9px; letter-spacing: 0.10em; }
+  .topbar-pill-label { font-size: 9px; letter-spacing: 0.08em; }
   .topbar-pill-count { font-size: 11px; }
   .topbar-water-add { width: 32px; font-size: 16px; }
-}
-@media (max-width: 380px) {
-  .topbar-pill-label { display: none; }
 }
 .topbar-profile-wrap {
   position: relative;
@@ -249,15 +259,16 @@ body.topbar-modal-open {
     </a>
     <button class="topbar-water-add" id="topbarWaterAdd" aria-label="Log one drink" type="button">+</button>
   </div>
-  <a href="gym.html" class="topbar-pill" id="topbarGym">
+  <div class="topbar-row-break" aria-hidden="true"></div>
+  <a href="gym.html" class="topbar-pill topbar-nav" id="topbarGym">
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">GYM</span>
   </a>
-  <a href="kondisjon.html" class="topbar-pill" id="topbarKondisjon">
+  <a href="kondisjon.html" class="topbar-pill topbar-nav" id="topbarKondisjon">
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">KONDIS</span>
   </a>
-  <a href="finance.html" class="topbar-pill" id="topbarFinance">
+  <a href="finance.html" class="topbar-pill topbar-nav" id="topbarFinance">
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">FINANCE</span>
   </a>
