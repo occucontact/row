@@ -524,13 +524,29 @@ main {
       </div>`;
   }
 
+  function gymProgramHasKondisNext() {
+    try {
+      const ps = JSON.parse(localStorage.getItem('po_prog_state') || 'null');
+      if (!ps || ps.programId !== 'coach') return false;
+      // Kondis is day index 3 in the coach program (Push=0, Pull=1, Legs=2, Kondis=3)
+      const nextIdx = (ps.nextDayIndex || 0) % 4;
+      return nextIdx === 3;
+    } catch { return false; }
+  }
+
   function renderDone() {
     const elapsed = timer ? timer.totalElapsed : 0;
+    const kondisNext = gymProgramHasKondisNext();
     return `
       <div class="ko-done">
         <div class="ko-done-title">Økt fullført!</div>
         <div class="ko-done-sub">Du gjennomførte ${fmtElapsed(elapsed)} på tredemøllen.</div>
       </div>
+      ${kondisNext ? `
+        <a href="gym.html" class="ko-btn ko-btn-primary" style="text-decoration:none; margin-bottom:8px">
+          ← Tilbake til gym · merk kondis-dag ferdig
+        </a>` : `
+        <a href="gym.html" class="ko-btn ko-btn-ghost" style="text-decoration:none; margin-bottom:8px">← Tilbake til gym</a>`}
       <button class="ko-btn ko-btn-ghost" id="koResetBtn">Ny økt</button>`;
   }
 

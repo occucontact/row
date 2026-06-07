@@ -1334,6 +1334,80 @@ img, video, canvas, svg { max-width: 100%; }
 }
 .prog-pick-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--border-strong); }
 .prog-pick-desc { display: block; font-size: 11px; color: var(--text-3); font-weight: 500; margin-top: 3px; }
+.prog-start-btn {
+  flex: 1;
+  padding: 9px 14px;
+  background: linear-gradient(135deg, rgba(110,231,183,0.18), rgba(110,231,183,0.10));
+  border: 1px solid rgba(110,231,183,0.30);
+  color: var(--good); border-radius: 10px;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.03em;
+}
+.prog-start-btn:hover { background: rgba(110,231,183,0.25); }
+.prog-kondis-link {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 10px; padding: 10px;
+  background: rgba(56,189,248,0.08);
+  border: 1px solid rgba(56,189,248,0.22);
+  border-radius: 10px; text-decoration: none;
+  color: #38BDF8; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.03em; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.prog-kondis-link:hover { background: rgba(56,189,248,0.14); }
+.prog-kondis-done {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 8px 12px;
+  background: rgba(56,189,248,0.06); border: 1px solid rgba(56,189,248,0.16);
+  border-radius: 10px; font-size: 11px; font-weight: 700;
+  color: #38BDF8; letter-spacing: 0.05em; text-transform: uppercase;
+}
+
+/* ===== Session import modal ===== */
+.sess-header { margin-bottom: 16px; }
+.sess-prog-label { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+.sess-day-label { font-size: 16px; font-weight: 700; color: var(--text-1); line-height: 1.25; }
+.sess-ex-list { display: flex; flex-direction: column; margin-bottom: 16px; }
+.sess-ex-row {
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.sess-ex-row:last-child { border-bottom: none; }
+.sess-ex-row.is-done { opacity: 0.55; }
+.sess-ex-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sess-ex-check {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--border-strong);
+  background: rgba(255,255,255,0.04);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+.sess-ex-row.is-done .sess-ex-check { background: var(--good); border-color: var(--good); color: #000; }
+.sess-ex-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-1); }
+.sess-ex-target { font-size: 11px; color: var(--text-3); font-family: var(--font-mono); }
+.sess-sets-label { font-size: 11px; color: var(--text-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.sess-ex-inputs { display: flex; gap: 6px; align-items: flex-end; }
+.sess-input-group { display: flex; flex-direction: column; gap: 3px; }
+.sess-input-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-4, #4D4B47); }
+.sess-input {
+  width: 68px; padding: 8px 9px; border-radius: 8px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-1); font-family: var(--font); font-size: 14px;
+  text-align: center; -webkit-tap-highlight-color: transparent;
+}
+.sess-input:focus { outline: none; border-color: rgba(255,255,255,0.28); }
+.sess-input.wide { width: 88px; }
+.sess-log-btn {
+  padding: 9px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  color: var(--text-1); font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; align-self: flex-end;
+  -webkit-tap-highlight-color: transparent; white-space: nowrap;
+}
+.sess-log-btn:hover { background: rgba(255,255,255,0.10); }
+.sess-log-btn:active { transform: scale(0.96); }
 
 .hidden { display: none !important; }
 </style>
@@ -1876,6 +1950,7 @@ const PROGRAMS = [
       },
       {
         label: 'Kondis – Kjernemuskel · Mobilitet · Eksplosivitet',
+        kondisDay: true,
         exercises: [
           { name: 'Planke',                       sets: 3, repMin: 30, repMax: 60, bw: true },
           { name: 'Bird-dog',                     sets: 3, repMin: 10, repMax: 10, bw: true },
@@ -2288,6 +2363,121 @@ const PROGRAMS = [
       else localStorage.setItem(PROG_KEY, JSON.stringify(s));
     } catch(e) {}
   }
+  // ---- Session import modal ----
+  function ensureExercise(progEx) {
+    let ex = state.exercises.find(e => e.name.toLowerCase() === progEx.name.toLowerCase());
+    if (!ex) {
+      ex = {
+        id: 'prog_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        name: progEx.name,
+        gym: state.gyms[0] ? state.gyms[0].id : 'gym1',
+        day: state.days[0] ? state.days[0].id : 'all',
+        bw: !!progEx.bw,
+        repMin: progEx.repMin || 8,
+        repMax: progEx.repMax || 12,
+        step: 2.5
+      };
+      state.exercises.push(ex);
+      saveState();
+    }
+    return ex;
+  }
+
+  function getTodaySetsFor(exId) {
+    const todayKey = wtDateKey(new Date());
+    return (state.logs[exId] || []).filter(l => l.date.slice(0,10) === todayKey.slice(0,10));
+  }
+
+  function openSessionModal(prog, day, dayIdx, ps) {
+    const nextDayIdx = (dayIdx + 1) % prog.days.length;
+    $('sessModalProgLabel').textContent = prog.name;
+    $('sessModalDayLabel').textContent = day.label;
+
+    function rebuildRows() {
+      const list = $('sessExList');
+      list.innerHTML = '';
+      day.exercises.forEach((progEx, i) => {
+        const ex = ensureExercise(progEx);
+        const todaySets = getTodaySetsFor(ex.id);
+        const targetSets = progEx.sets || 1;
+        const isDone = todaySets.length >= targetSets;
+        const lastLog = (state.logs[ex.id] || []).slice(-1)[0];
+        const suggestWeight = lastLog ? lastLog.weight : '';
+        const suggestReps = progEx.repMin || 8;
+
+        const row = document.createElement('div');
+        row.className = 'sess-ex-row' + (isDone ? ' is-done' : '');
+        row.dataset.i = i;
+
+        const repTarget = progEx.bw ? 'maks' :
+          (progEx.repMin === progEx.repMax ? progEx.repMin + ' reps' : progEx.repMin + '–' + progEx.repMax + ' reps');
+        const setsLabel = todaySets.length + '/' + targetSets + ' sett';
+
+        row.innerHTML =
+          '<div class="sess-ex-top">' +
+          '<div class="sess-ex-check">' + (isDone ? '✓' : '') + '</div>' +
+          '<span class="sess-ex-name">' + escape(ex.name) + '</span>' +
+          '<span class="sess-ex-target">' + escape(repTarget) + '</span>' +
+          '<span class="sess-sets-label">' + setsLabel + '</span>' +
+          '</div>' +
+          '<div class="sess-ex-inputs">' +
+          (!progEx.bw ? (
+            '<div class="sess-input-group">' +
+            '<span class="sess-input-label">Vekt (' + state.units + ')</span>' +
+            '<input class="sess-input" type="number" inputmode="decimal" step="0.5" min="0" placeholder="—" value="' + (suggestWeight || '') + '" data-role="weight">' +
+            '</div>'
+          ) : '') +
+          '<div class="sess-input-group">' +
+          '<span class="sess-input-label">Reps</span>' +
+          '<input class="sess-input" type="number" inputmode="numeric" min="1" placeholder="' + suggestReps + '" data-role="reps">' +
+          '</div>' +
+          '<div class="sess-input-group">' +
+          '<span class="sess-input-label">Tempo</span>' +
+          '<input class="sess-input wide" type="text" inputmode="text" placeholder="3-0-2-0" data-role="tempo">' +
+          '</div>' +
+          '<button class="sess-log-btn" data-exid="' + ex.id + '" data-bw="' + (progEx.bw ? '1' : '') + '">' +
+          (isDone ? 'Logg igjen' : 'Logg') + '</button>' +
+          '</div>';
+        list.appendChild(row);
+
+        row.querySelector('.sess-log-btn').addEventListener('click', function() {
+          const repsInput = row.querySelector('[data-role="reps"]');
+          const weightInput = row.querySelector('[data-role="weight"]');
+          const tempoInput = row.querySelector('[data-role="tempo"]');
+          const reps = parseInt(repsInput ? repsInput.value : '0', 10);
+          if (!reps || reps <= 0) { repsInput && repsInput.focus(); return; }
+          const w = progEx.bw ? 0 : (parseFloat(weightInput ? weightInput.value : '0') || 0);
+          if (!progEx.bw && w <= 0) { weightInput && weightInput.focus(); return; }
+          const tempo = tempoInput ? (tempoInput.value.trim() || null) : null;
+          const entry = { weight: w, reps: reps, date: new Date().toISOString() };
+          if (tempo) entry.tempo = tempo;
+          const arr = state.logs[ex.id] || [];
+          arr.push(entry);
+          state.logs[ex.id] = arr;
+          saveState();
+          rebuildRows();
+          renderAll();
+        });
+      });
+    }
+
+    rebuildRows();
+    $('sessModalBg').classList.add('show');
+
+    $('sessCloseBtn').onclick = () => $('sessModalBg').classList.remove('show');
+    $('sessFinishBtn').onclick = () => {
+      progSave({ programId: ps.programId, nextDayIndex: nextDayIdx });
+      $('sessModalBg').classList.remove('show');
+      renderProgramSection();
+    };
+    $('sessModalBg').addEventListener('click', function bgClick(e) {
+      if (e.target === $('sessModalBg')) {
+        $('sessModalBg').classList.remove('show');
+        $('sessModalBg').removeEventListener('click', bgClick);
+      }
+    });
+  }
+
   function renderProgramSection() {
     const section = $('progSection');
     if (!section) return;
@@ -2317,7 +2507,6 @@ const PROGRAMS = [
     if (!prog) { progSave(null); renderProgramSection(); return; }
     const dayIdx = (ps.nextDayIndex || 0) % prog.days.length;
     const day = prog.days[dayIdx];
-    // Check which exercises from this day have been logged today
     const todayKey = wtDateKey(new Date());
     const todaySets = (logsByDay())[todayKey] || [];
     const loggedNames = new Set(todaySets.map(({ex}) => ex.name.toLowerCase()));
@@ -2325,29 +2514,52 @@ const PROGRAMS = [
     const progressLabel = doneCount > 0 ? (' · ' + doneCount + '/' + day.exercises.length + ' logget') : '';
     const nextDayIdx = (dayIdx + 1) % prog.days.length;
     const nextLabel = prog.days[nextDayIdx].label;
+
+    // Check kondisjon session today
+    let kondisLoggedToday = false;
+    if (day.kondisDay) {
+      try {
+        const koSess = JSON.parse(localStorage.getItem('ko_sessions_v1') || '[]');
+        kondisLoggedToday = koSess.some(s => s.date === todayKey.slice(0,10));
+      } catch(_) {}
+    }
+
     const exListHtml = day.exercises.map(ex => {
       const done = loggedNames.has(ex.name.toLowerCase());
       const repMeta = ex.bw ? 'maks' : (ex.repMin === ex.repMax ? ex.repMin + ' reps' : ex.repMin + '–' + ex.repMax + ' reps');
-      const setMeta = ex.bw ? '' : (' · ' + ex.sets + ' sett');
+      const setMeta = ' · ' + ex.sets + ' sett';
       return '<div class="prog-ex-row' + (done ? ' is-done' : '') + '">' +
         '<div class="prog-ex-check">' + (done ? '✓' : '') + '</div>' +
         '<span class="prog-ex-name">' + escape(ex.name) + '</span>' +
         '<span class="prog-ex-meta">' + repMeta + setMeta + '</span>' +
         '</div>';
     }).join('');
+
+    const kondisHtml = day.kondisDay ? (
+      (kondisLoggedToday
+        ? '<div class="prog-kondis-done">⚡ Kondisjon logget i dag ✓</div>'
+        : '<a href="kondisjon.html" class="prog-kondis-link">⚡ Åpne Kondisjon — tredemølle-intervaller →</a>')
+    ) : '';
+
     section.innerHTML =
       '<div class="prog-card">' +
       '<div class="prog-eyebrow">NESTE ØKT · ' + escape(prog.name.toUpperCase()) + progressLabel + '</div>' +
       '<div class="prog-headline">' + escape(day.label) + '</div>' +
       '<div class="prog-action-row">' +
       '<button class="prog-change-btn" id="progChangeBtn">Bytt program</button>' +
+      '<button class="prog-start-btn" id="progStartBtn">Start økt →</button>' +
       '</div>' +
       '<div class="prog-ex-list">' + exListHtml + '</div>' +
+      kondisHtml +
       '<button class="prog-next-btn" id="progNextBtn">Ferdig · neste opp: ' + escape(nextLabel) + ' →</button>' +
       '</div>';
+
     $('progChangeBtn').addEventListener('click', () => {
       progSave(null);
       renderProgramSection();
+    });
+    $('progStartBtn').addEventListener('click', () => {
+      openSessionModal(prog, day, dayIdx, ps);
     });
     $('progNextBtn').addEventListener('click', () => {
       progSave({ programId: ps.programId, nextDayIndex: nextDayIdx });
@@ -3791,6 +4003,21 @@ const PROGRAMS = [
   });
 })();
 </script>
+
+<!-- ===== Session import modal ===== -->
+<div class="po-modal-bg" id="sessModalBg">
+  <div class="po-modal" style="max-width:500px">
+    <div class="sess-header">
+      <div class="sess-prog-label" id="sessModalProgLabel"></div>
+      <div class="sess-day-label" id="sessModalDayLabel"></div>
+    </div>
+    <div class="sess-ex-list" id="sessExList"></div>
+    <div class="po-modal-actions">
+      <button class="po-btn po-btn-secondary" id="sessCloseBtn">Lukk</button>
+      <button class="po-btn po-btn-primary" id="sessFinishBtn">Ferdig · neste økt →</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
