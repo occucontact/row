@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Local instrumental sketch in raga Mohanam (no API needed).
 
-Programmed approximation of a temple chariot-festival mood:
-tanpura-style drone, nadaswaram-like lead melody with gamaka slides,
-and a thavil-like 8-beat (adi tala) rhythm. Writes output/mohanam_sketch.wav
-(and .mp3 if lameenc is installed).
+Programmed approximation of a temple chariot-festival mood: warm drone,
+flute-like lead melody with gamaka slides, soft percussion in adi tala,
+stereo with reverb. Writes output/mohanam_sketch.wav (and .mp3 if
+lameenc is installed).
 """
 import os
 import wave
@@ -12,79 +12,84 @@ import wave
 import numpy as np
 
 SR = 44100
-BPM = 96
+BPM = 88
 BEAT = 60.0 / BPM
-SA = 146.83  # D3 tonic
+SA = 220.0  # A3 tonic
 
 # Mohanam: S R2 G3 P D2 (just intonation ratios within the octave)
 RATIOS = [1.0, 9 / 8, 5 / 4, 3 / 2, 27 / 16]
 
+rng = np.random.default_rng(7)
 
-def degree_freq(deg, base_octave=1):
+
+def degree_freq(deg):
     octave, step = divmod(deg, 5)
-    return SA * RATIOS[step] * 2 ** (octave + base_octave)
+    return SA * RATIOS[step] * 2 ** octave
 
 
-def env(n, attack=0.04, release=0.15):
+def smooth_env(n, attack, release):
+    """Raised-cosine attack/release — no clicks."""
     e = np.ones(n)
-    a, r = int(attack * SR), int(release * SR)
+    a, r = min(int(attack * SR), n // 2), min(int(release * SR), n // 2)
     if a:
-        e[:a] = np.linspace(0, 1, a)
-    if r and r < n:
-        e[-r:] = np.linspace(1, 0, r)
+        e[:a] = 0.5 - 0.5 * np.cos(np.pi * np.arange(a) / a)
+    if r:
+        e[-r:] = 0.5 + 0.5 * np.cos(np.pi * np.arange(r) / r)
     return e
 
 
-def nadaswaram_note(freq, dur, prev_freq=None):
-    """Bright reedy tone: additive harmonics, slide-in (gamaka), vibrato."""
+def lowpass(x, cutoff):
+    """Gentle one-pole-style rolloff via FFT."""
+    spec = np.fft.rfft(x)
+    f = np.fft.rfftfreq(len(x), 1 / SR)
+    spec *= 1 / (1 + (f / cutoff) ** 2)
+    return np.fft.irfft(spec, len(x))
+
+
+def flute_note(freq, dur, prev_freq=None):
+    """Soft flute-like tone: few harmonics, breath, slow vibrato, glide."""
     n = int(dur * SR)
     t = np.arange(n) / SR
-    f = np.full(n, freq)
-    if prev_freq:  # glide from the previous pitch over ~70 ms
-        g = min(int(0.07 * SR), n)
-        f[:g] = np.linspace(prev_freq, freq, g)
-    vib = 1 + 0.006 * np.sin(2 * np.pi * 5.5 * t) * np.minimum(t / 0.25, 1)
+    f = np.full(n, float(freq))
+    if prev_freq:  # gamaka: glide from previous pitch over ~90 ms
+        g = min(int(0.09 * SR), n)
+        f[:g] = freq + (prev_freq - freq) * (0.5 + 0.5 * np.cos(
+            np.pi * np.arange(g) / g))
+    vib = 1 + 0.004 * np.sin(2 * np.pi * 5.0 * t) * np.minimum(t / 0.4, 1)
     phase = 2 * np.pi * np.cumsum(f * vib) / SR
-    tone = np.zeros(n)
-    for h, amp in enumerate([1.0, 0.62, 0.45, 0.3, 0.22, 0.15, 0.09], start=1):
-        tone += amp * np.sin(h * phase)
-    return tone * env(n, attack=0.025, release=min(0.18, dur * 0.4)) * 0.16
+    tone = (np.sin(phase) + 0.30 * np.sin(2 * phase)
+            + 0.12 * np.sin(3 * phase) + 0.05 * np.sin(4 * phase))
+    breath = lowpass(rng.standard_normal(n), 1800) * 0.015
+    return (tone + breath) * smooth_env(n, 0.06, min(0.25, dur * 0.45)) * 0.22
 
 
-def tanpura(total_dur):
-    """Slow looping Sa/Pa plucks with rich harmonics."""
+def drone(total_dur):
+    """Continuous warm Sa/Pa pad with slow movement and slight detune."""
     n = int(total_dur * SR)
+    t = np.arange(n) / SR
     out = np.zeros(n)
-    cycle = [SA, SA * 1.5, SA * 2, SA]  # Sa Pa Sa' Sa
-    step = 1.4
-    i, pos = 0, 0.0
-    while pos < total_dur:
-        f = cycle[i % 4]
-        m = int(min(2.6, total_dur - pos) * SR)
-        t = np.arange(m) / SR
-        pluck = sum(
-            (0.5 ** h) * np.sin(2 * np.pi * f * (h + 1) * t) for h in range(6)
-        ) * np.exp(-t / 1.6)
-        s = int(pos * SR)
-        out[s:s + m] += pluck[: n - s] * 0.05
-        i += 1
-        pos += step
-    return out
+    voices = [(SA / 2, 0.5), (SA / 2 * 1.003, 0.35), (SA * 0.75, 0.30),
+              (SA, 0.28), (SA * 1.002, 0.20), (SA * 1.5, 0.10)]
+    for i, (f, amp) in enumerate(voices):
+        lfo = 1 + 0.12 * np.sin(2 * np.pi * (0.05 + 0.013 * i) * t + i)
+        out += amp * lfo * (np.sin(2 * np.pi * f * t)
+                            + 0.25 * np.sin(2 * np.pi * 2 * f * t + i))
+    return out * 0.045
 
 
-def thavil_low(dur=0.22):
-    n = int(dur * SR)
+def drum_low():
+    n = int(0.30 * SR)
     t = np.arange(n) / SR
-    f = 95 * np.exp(-t * 9) + 55
-    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 14) * 0.5
+    f = 110 * np.exp(-t * 12) + 58
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 10) * 0.30
 
 
-def thavil_hi(dur=0.09):
-    n = int(dur * SR)
+def drum_hi():
+    n = int(0.12 * SR)
     t = np.arange(n) / SR
-    noise = np.random.default_rng(7).standard_normal(n)
-    return (noise * np.exp(-t * 55) + 0.4 * np.sin(2 * np.pi * 480 * t)
-            * np.exp(-t * 40)) * 0.22
+    body = np.sin(2 * np.pi * 520 * t) * np.exp(-t * 38)
+    snap = lowpass(rng.standard_normal(n), 4000) * np.exp(-t * 60)
+    return (0.5 * body + 0.35 * snap) * 0.16
 
 
 def add(buf, sound, at_sec):
@@ -94,50 +99,71 @@ def add(buf, sound, at_sec):
         buf[s:s + m] += sound[:m]
 
 
+def reverb(x, seed, decay=0.9, length=1.4, wet=0.22):
+    n = int(length * SR)
+    t = np.arange(n) / SR
+    ir = np.random.default_rng(seed).standard_normal(n) * np.exp(-t / decay)
+    ir = lowpass(ir, 5000)
+    ir /= np.sqrt(np.sum(ir ** 2))
+    tail = np.fft.irfft(
+        np.fft.rfft(x, len(x) + n) * np.fft.rfft(ir, len(x) + n))[:len(x)]
+    return x + wet * tail
+
+
 # Melody phrases as (scale degree, duration in beats); 0=Sa ... 5=upper Sa
 PALLAVI = [(0, .5), (1, .5), (2, 1), (3, 1), (2, .5), (1, .5), (0, 2)]
-ANUPALLAVI = [(2, .5), (3, .5), (4, 1), (5, 1), (4, .5), (3, .5),
+ANUPALLAVI = [(2, .5), (3, .5), (4, 1), (5, 1.5), (4, .5), (3, 1),
               (2, 1), (1, 1), (0, 2)]
-CHARANAM = [(5, .5), (5, .5), (4, 1), (3, 1), (4, .5), (5, .5), (6, 1),
-            (5, 1), (4, .5), (3, .5), (2, 1), (1, 1), (0, 2)]
+CHARANAM = [(5, 1), (5, .5), (4, .5), (3, 1), (4, .5), (5, .5), (6, 1.5),
+            (5, 1.5), (4, .5), (3, .5), (2, 1), (1, 1), (0, 2)]
 FORM = [PALLAVI, PALLAVI, ANUPALLAVI, PALLAVI, CHARANAM, ANUPALLAVI, PALLAVI]
 
-# One adi-tala (8 beat) thavil cycle: (beat offset, low?)
-TALA = [(0, True), (1, False), (2, True), (3.5, False), (4, True),
-        (5, False), (6, True), (6.5, False), (7, False)]
+# One adi-tala (8 beat) cycle: (beat offset, low drum?)
+TALA = [(0, True), (2, False), (3, True), (4, True), (6, False), (7, False)]
 
 
 def main():
-    intro = 4.0
+    intro = 5.0
     melody_beats = sum(d for ph in FORM for _, d in ph)
-    outro = 4.0
+    outro = 5.0
     total = intro + melody_beats * BEAT + outro
-    buf = tanpura(total)
+    n = int(total * SR)
 
-    # rhythm runs under the melody section
-    pos = intro
+    pad = drone(total)
+    lead = np.zeros(n)
+    perc = np.zeros(n)
+
+    # rhythm under the melody section only, easing in on the 2nd cycle
+    pos, cycle = intro, 0
     while pos < total - outro - 0.01:
+        gain = 0.5 if cycle == 0 else 1.0
         for off, low in TALA:
-            add(buf, thavil_low() if low else thavil_hi(), pos + off * BEAT)
+            add(perc, (drum_low() if low else drum_hi()) * gain,
+                pos + off * BEAT)
         pos += 8 * BEAT
+        cycle += 1
 
-    # lead melody
     pos, prev = intro, None
     for phrase in FORM:
         for deg, beats in phrase:
             f = degree_freq(deg)
-            add(buf, nadaswaram_note(f, beats * BEAT, prev), pos)
+            add(lead, flute_note(f, beats * BEAT + 0.05, prev), pos)
             prev = f
             pos += beats * BEAT
-    # closing sustained Sa over the drone
-    add(buf, nadaswaram_note(degree_freq(0), outro * 0.9, prev), pos)
+    add(lead, flute_note(degree_freq(0), outro * 0.8, prev), pos)
 
-    buf /= max(1.0, np.max(np.abs(buf)) / 0.85)
-    pcm = (buf * 32767).astype(np.int16)
+    mix = pad + lead + perc
+    left = reverb(mix + 0.02 * pad, seed=11)
+    right = reverb(mix - 0.02 * pad, seed=12)
 
+    stereo = np.stack([left, right], axis=1)
+    stereo *= smooth_env(n, 1.5, 4.0)[:, None]
+    stereo = np.tanh(stereo / np.quantile(np.abs(stereo), 0.999)) * 0.8
+
+    pcm = (stereo * 32767).astype(np.int16)
     os.makedirs("output", exist_ok=True)
     with wave.open("output/mohanam_sketch.wav", "wb") as w:
-        w.setnchannels(1)
+        w.setnchannels(2)
         w.setsampwidth(2)
         w.setframerate(SR)
         w.writeframes(pcm.tobytes())
@@ -146,9 +172,9 @@ def main():
     try:
         import lameenc
         enc = lameenc.Encoder()
-        enc.set_bit_rate(160)
+        enc.set_bit_rate(192)
         enc.set_in_sample_rate(SR)
-        enc.set_channels(1)
+        enc.set_channels(2)
         enc.set_quality(2)
         mp3 = enc.encode(pcm.tobytes()) + enc.flush()
         with open("output/mohanam_sketch.mp3", "wb") as f:
