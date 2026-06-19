@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<title>AI Stylist — Outfit Generator</title>
+<script src="profile.js"></script>
+<script src="locale.js"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-secondary: rgba(255, 255, 255, 0.035);
+  --bg-input: rgba(0, 0, 0, 0.28);
+  --bg-input-focus: rgba(0, 0, 0, 0.36);
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-soft: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --text-quaternary: #4D4B47;
+
+  /* Warm "atelier" accent — distinct from the green/blue dashboard tabs */
+  --accent: #E0A872;
+  --accent-2: #C98A8A;
+  --accent-glow: rgba(224, 168, 114, 0.30);
+
+  --danger: #ff8a8a;
+
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
+}
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 22px max(16px, env(safe-area-inset-left)) 60px;
+}
+
+/* ---------- Header ---------- */
+.hero {
+  margin: 8px 0 26px;
+}
+.hero-eyebrow {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--accent);
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-eyebrow::before {
+  content: ""; width: 22px; height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+.hero h1 {
+  font-size: 30px; font-weight: 800; letter-spacing: -0.02em;
+  margin: 12px 0 8px; line-height: 1.05;
+}
+.hero h1 .em {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 14px; color: var(--text-secondary); max-width: 56ch; line-height: 1.5;
+}
+
+/* ---------- Cards / form ---------- */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field.full { grid-column: 1 / -1; }
+.field label {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+}
+.field .hint { font-size: 11px; color: var(--text-quaternary); font-weight: 500; }
+
+input[type=text], input[type=number], input[type=password], select, textarea {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 11px 12px;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-input-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2376746E' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+/* Chip multi-select (style + colors) */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-size: 13px; font-weight: 600;
+  padding: 8px 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.14s;
+  user-select: none;
+}
+.chip:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.chip.on {
+  background: rgba(224, 168, 114, 0.14);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ---------- Generate button ---------- */
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.btn {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 15px 18px;
+  border: none; border-radius: 14px;
+  font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 0.01em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  color: #1a1208;
+  transition: transform 0.1s, filter 0.15s, opacity 0.15s;
+}
+.btn:hover { filter: brightness(1.06); }
+.btn:active { transform: scale(0.985); }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.btn-ghost {
+  flex: 0 0 auto;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  font-weight: 700; font-size: 13px;
+  padding: 15px 16px;
+}
+.btn-ghost:hover { color: var(--text-primary); border-color: var(--border-strong); filter: none; }
+
+.engine-note {
+  font-size: 11.5px; color: var(--text-quaternary); margin-top: 11px; text-align: center;
+}
+.engine-note b { color: var(--accent); font-weight: 700; }
+
+/* Spinner */
+.spin {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(26,18,8,0.35);
+  border-top-color: #1a1208;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- API settings (collapsible) ---------- */
+details.api {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+details.api summary {
+  list-style: none; cursor: pointer;
+  padding: 14px 18px;
+  font-size: 13px; font-weight: 700; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 9px;
+  -webkit-tap-highlight-color: transparent;
+}
+details.api summary::-webkit-details-marker { display: none; }
+.api-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-quaternary); flex-shrink: 0;
+}
+.api-dot.live { background: #6ee7b7; box-shadow: 0 0 8px rgba(110,231,183,0.6); }
+.api-body { padding: 0 18px 18px; }
+.api-body p { font-size: 12.5px; color: var(--text-tertiary); line-height: 1.5; margin-bottom: 12px; }
+.api-body a { color: var(--accent); }
+.api-row { display: flex; gap: 8px; }
+.api-row input { flex: 1; }
+.api-save {
+  padding: 0 16px; border-radius: 11px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-primary);
+  font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.api-save:hover { border-color: var(--accent); }
+
+/* ---------- Status / errors ---------- */
+.status {
+  display: none;
+  border-radius: 13px; padding: 14px 16px; margin-bottom: 16px;
+  font-size: 13.5px; line-height: 1.5;
+}
+.status.show { display: block; }
+.status.err { background: rgba(163,45,45,0.12); border: 1px solid rgba(255,138,138,0.25); color: #ffc4c4; }
+.status.info { background: rgba(224,168,114,0.08); border: 1px solid var(--border); color: var(--text-secondary); }
+
+/* ---------- Results ---------- */
+#results { margin-top: 6px; }
+.results-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 26px 4px 14px;
+}
+.results-head h2 { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.results-head span { font-size: 12px; color: var(--text-tertiary); }
+
+.outfit {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+  animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.outfit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.outfit-name { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.outfit-vibe {
+  display: inline-block; margin-top: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(224,168,114,0.10);
+  border: 1px solid rgba(224,168,114,0.22);
+  border-radius: 999px; padding: 4px 10px;
+}
+.outfit-swatches { display: flex; gap: -6px; flex-shrink: 0; }
+.swatch {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--bg);
+  margin-left: -8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.swatch:first-child { margin-left: 0; }
+
+.items { display: flex; flex-direction: column; gap: 1px; border-radius: 12px; overflow: hidden; }
+.item {
+  display: flex; align-items: center; gap: 13px;
+  padding: 12px 13px;
+  background: var(--bg-secondary);
+}
+.item-chip {
+  width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.14);
+}
+.item-text { min-width: 0; }
+.item-cat {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-quaternary);
+}
+.item-desc { font-size: 14px; color: var(--text-primary); margin-top: 2px; line-height: 1.35; }
+
+.outfit-why {
+  margin-top: 15px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.55;
+}
+.outfit-tip {
+  margin-top: 12px; padding: 12px 13px;
+  background: rgba(224,168,114,0.07);
+  border-left: 2px solid var(--accent);
+  border-radius: 8px;
+  font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+}
+.outfit-tip b { color: var(--accent); font-weight: 700; }
+
+/* Skeleton loading */
+.skeleton .outfit { animation: pulse 1.4s ease-in-out infinite; }
+.sk-bar { background: var(--bg-secondary); border-radius: 8px; }
+@keyframes pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 0.95; } }
+
+.empty {
+  text-align: center; color: var(--text-quaternary);
+  font-size: 13px; padding: 30px 20px; line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 26px; }
+  .actions { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-eyebrow">AI Stylist</div>
+    <h1>La AI sette sammen <span class="em">antrekk</span> for deg</h1>
+    <p>Fortell stylisten om personen og anledningen — så får du komplette antrekk med plagg, farger og hvorfor det fungerer.</p>
+  </div>
+
+  <!-- API key (optional) -->
+  <details class="api" id="apiBox">
+    <summary>
+      <span class="api-dot" id="apiDot"></span>
+      <span id="apiSummary">AI-modus — koble til for ekte stylist</span>
+    </summary>
+    <div class="api-body">
+      <p>
+        Lim inn en Anthropic API-nøkkel for å bruke Claude som personlig stylist.
+        Nøkkelen lagres bare lokalt i nettleseren din (per profil) og sendes kun til Anthropic.
+        Få en nøkkel på <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+        Uten nøkkel brukes en innebygd stil-motor som fungerer offline.
+      </p>
+      <div class="api-row">
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+        <button class="api-save" id="apiSave" type="button">Lagre</button>
+      </div>
+    </div>
+  </details>
+
+  <!-- Status -->
+  <div class="status" id="status"></div>
+
+  <!-- Form -->
+  <form id="form">
+    <div class="card">
+      <div class="card-title">Personen</div>
+      <div class="grid">
+        <div class="field">
+          <label for="who">Stil-uttrykk</label>
+          <select id="who">
+            <option value="kvinne">Feminint</option>
+            <option value="mann">Maskulint</option>
+            <option value="androgynt">Androgynt / nøytralt</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="age">Alder <span class="hint">(valgfritt)</span></label>
+          <input type="number" id="age" min="1" max="120" placeholder="f.eks. 28">
+        </div>
+        <div class="field">
+          <label for="body">Kroppstype <span class="hint">(valgfritt)</span></label>
+          <input type="text" id="body" placeholder="f.eks. atletisk, pæreformet, høy">
+        </div>
+        <div class="field">
+          <label for="skin">Hud-/hårtone <span class="hint">(valgfritt)</span></label>
+          <input type="text" id="skin" placeholder="f.eks. lys, varm, mørk">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Anledningen</div>
+      <div class="grid">
+        <div class="field">
+          <label for="occasion">Anledning</label>
+          <select id="occasion">
+            <option>Hverdag / casual</option>
+            <option>Jobb / kontor</option>
+            <option>Jobbintervju</option>
+            <option>Date</option>
+            <option>Fest / kveld ute</option>
+            <option>Bryllup (gjest)</option>
+            <option>Trening / aktiv</option>
+            <option>Reise</option>
+            <option>Formelt / galla</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="weather">Vær / temperatur</label>
+          <select id="weather">
+            <option value="kaldt">Kaldt (under 5 °C)</option>
+            <option value="kjølig" selected>Kjølig (5–15 °C)</option>
+            <option value="mildt">Mildt (15–22 °C)</option>
+            <option value="varmt">Varmt (over 22 °C)</option>
+            <option value="regn">Regn / vått</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Stil-preferanser</label>
+          <div class="chips" id="styleChips"></div>
+        </div>
+        <div class="field full">
+          <label>Favorittfarger <span class="hint">(valgfritt)</span></label>
+          <div class="chips" id="colorChips"></div>
+        </div>
+        <div class="field full">
+          <label for="notes">Annet stylisten bør vite <span class="hint">(valgfritt)</span></label>
+          <textarea id="notes" placeholder="f.eks. budsjett, plagg jeg allerede eier, ting jeg vil unngå, en spesiell vibb..."></textarea>
+        </div>
+        <div class="field">
+          <label for="count">Antall antrekk</label>
+          <select id="count">
+            <option>2</option>
+            <option selected>3</option>
+            <option>4</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="go" type="submit">
+        <span id="goLabel">Lag antrekk</span>
+      </button>
+      <button class="btn-ghost" id="surprise" type="button" title="Tilfeldig">🎲 Overrask</button>
+    </div>
+    <div class="engine-note" id="engineNote"></div>
+  </form>
+
+  <!-- Results -->
+  <div id="results"></div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Config ----------
+  var MODEL = 'claude-opus-4-8';
+  var LS_KEY = 'outfits:apikey';
+  var LS_FORM = 'outfits:lastform';
+  var API_URL = 'https://api.anthropic.com/v1/messages';
+
+  var STYLES = ['Klassisk', 'Minimalistisk', 'Streetwear', 'Smart casual', 'Bohem', 'Sporty', 'Elegant', 'Vintage', 'Edgy', 'Skandinavisk'];
+  var COLORS = [
+    ['Sort', '#1c1c1e'], ['Hvit', '#f4f1ea'], ['Beige', '#cbb893'], ['Marine', '#26344f'],
+    ['Grå', '#8a8a90'], ['Brun', '#6e4f37'], ['Oliven', '#5c5f43'], ['Bordeaux', '#5c2b34'],
+    ['Rust', '#b5673a'], ['Pastell', '#cdb7d4'], ['Knall', '#d8483f']
+  ];
+
+  // ---------- Element refs ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var statusEl = $('status');
+
+  // ---------- Build chips ----------
+  var styleSel = new Set(['Smart casual']);
+  var colorSel = new Set();
+
+  function buildChips(host, list, store, isColor) {
+    list.forEach(function (entry) {
+      var label = isColor ? entry[0] : entry;
+      var chip = document.createElement('div');
+      chip.className = 'chip' + (store.has(label) ? ' on' : '');
+      chip.textContent = label;
+      if (isColor) {
+        var dot = document.createElement('span');
+        dot.style.cssText = 'display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px;vertical-align:-1px;border:1px solid rgba(255,255,255,0.2);background:' + entry[1];
+        chip.prepend(dot);
+      }
+      chip.addEventListener('click', function () {
+        if (store.has(label)) { store.delete(label); chip.classList.remove('on'); }
+        else { store.add(label); chip.classList.add('on'); }
+      });
+      host.appendChild(chip);
+    });
+  }
+  buildChips($('styleChips'), STYLES, styleSel, false);
+  buildChips($('colorChips'), COLORS, colorSel, true);
+
+  // ---------- API key handling ----------
+  function getKey() { try { return localStorage.getItem(LS_KEY) || ''; } catch (e) { return ''; } }
+  function refreshApiState() {
+    var k = getKey();
+    $('apiKey').value = k;
+    $('apiDot').classList.toggle('live', !!k);
+    $('apiSummary').textContent = k ? 'AI-modus aktiv — Claude er din stylist' : 'AI-modus — koble til for ekte stylist';
+    $('engineNote').innerHTML = k
+      ? 'Drevet av <b>Claude</b> (' + MODEL + ')'
+      : 'Bruker <b>innebygd motor</b> — legg til en API-nøkkel for AI-genererte antrekk';
+  }
+  $('apiSave').addEventListener('click', function () {
+    var v = $('apiKey').value.trim();
+    try {
+      if (v) localStorage.setItem(LS_KEY, v);
+      else localStorage.removeItem(LS_KEY);
+    } catch (e) {}
+    refreshApiState();
+    $('apiBox').open = false;
+    showStatus('info', v ? 'Nøkkel lagret. AI-modus er på.' : 'Nøkkel fjernet — bruker innebygd motor.');
+    setTimeout(hideStatus, 2600);
+  });
+  refreshApiState();
+
+  // ---------- Status ----------
+  function showStatus(kind, msg) {
+    statusEl.className = 'status show ' + kind;
+    statusEl.textContent = msg;
+  }
+  function hideStatus() { statusEl.className = 'status'; }
+
+  // ---------- Collect form ----------
+  function collect() {
+    return {
+      who: $('who').value,
+      age: $('age').value.trim(),
+      body: $('body').value.trim(),
+      skin: $('skin').value.trim(),
+      occasion: $('occasion').value,
+      weather: $('weather').value,
+      styles: Array.from(styleSel),
+      colors: Array.from(colorSel),
+      notes: $('notes').value.trim(),
+      count: parseInt($('count').value, 10) || 3
+    };
+  }
+
+  // ---------- Prompt for Claude ----------
+  function buildPrompt(f) {
+    var lines = [];
+    lines.push('Du er en erfaren personlig stylist. Sett sammen ' + f.count + ' komplette, gjennomførbare antrekk for denne personen og anledningen.');
+    lines.push('');
+    lines.push('PERSON:');
+    lines.push('- Stil-uttrykk: ' + f.who);
+    if (f.age) lines.push('- Alder: ' + f.age);
+    if (f.body) lines.push('- Kroppstype: ' + f.body);
+    if (f.skin) lines.push('- Hud-/hårtone: ' + f.skin);
+    lines.push('');
+    lines.push('KONTEKST:');
+    lines.push('- Anledning: ' + f.occasion);
+    lines.push('- Vær/temperatur: ' + f.weather);
+    if (f.styles.length) lines.push('- Foretrukne stiler: ' + f.styles.join(', '));
+    if (f.colors.length) lines.push('- Favorittfarger: ' + f.colors.join(', '));
+    if (f.notes) lines.push('- Ekstra ønsker: ' + f.notes);
+    lines.push('');
+    lines.push('Krav:');
+    lines.push('- Hvert antrekk skal ha mellom 3 og 6 plagg/elementer (inkl. sko og ev. tilbehør), tilpasset været.');
+    lines.push('- Bruk realistiske, konkrete plagg (ikke merkenavn). Angi en farge og en presis hex-kode for hvert plagg.');
+    lines.push('- Gi hvert antrekk et kort, fengende navn og en vibb på 1–2 ord.');
+    lines.push('- Forklar kort hvorfor antrekket fungerer for personen og anledningen.');
+    lines.push('- Legg ved ett konkret styling-tips per antrekk.');
+    lines.push('- Skriv alt på norsk.');
+    return lines.join('\n');
+  }
+
+  var SCHEMA = {
+    type: 'object',
+    properties: {
+      outfits: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            vibe: { type: 'string' },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  category: { type: 'string' },
+                  description: { type: 'string' },
+                  color: { type: 'string' },
+                  colorHex: { type: 'string' }
+                },
+                required: ['category', 'description', 'color', 'colorHex'],
+                additionalProperties: false
+              }
+            },
+            why: { type: 'string' },
+            stylingTip: { type: 'string' }
+          },
+          required: ['name', 'vibe', 'items', 'why', 'stylingTip'],
+          additionalProperties: false
+        }
+      }
+    },
+    required: ['outfits'],
+    additionalProperties: false
+  };
+
+  // ---------- Call Claude (direct from browser) ----------
+  function callClaude(f) {
+    var body = {
+      model: MODEL,
+      max_tokens: 4000,
+      output_config: { format: { type: 'json_schema', schema: SCHEMA } },
+      messages: [{ role: 'user', content: buildPrompt(f) }]
+    };
+    return fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': getKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+          throw new Error(msg);
+        }
+        return data;
+      });
+    }).then(function (data) {
+      if (data.stop_reason === 'refusal') {
+        throw new Error('Forespørselen ble avvist av sikkerhetsgrunner. Prøv å justere beskrivelsen.');
+      }
+      var textBlock = (data.content || []).find(function (b) { return b.type === 'text'; });
+      if (!textBlock) throw new Error('Tomt svar fra modellen.');
+      var parsed = JSON.parse(textBlock.text);
+      if (!parsed.outfits || !parsed.outfits.length) throw new Error('Ingen antrekk i svaret.');
+      return parsed.outfits;
+    });
+  }
+
+  // ======================================================================
+  // Offline engine — curated wardrobe assembled by occasion + weather
+  // ======================================================================
+  var WARDROBE = (function () {
+    // category, [feminine, masculine, neutral] descriptions are shared;
+    // colorHex chosen from a tasteful palette per piece.
+    function P(category, desc, color, hex) { return { category: category, description: desc, color: color, colorHex: hex }; }
+    return {
+      tops: {
+        casual: [P('Overdel', 'Avslappet økologisk t-skjorte', 'Benhvit', '#efe9dc'), P('Overdel', 'Strikket genser i lammeull', 'Havregrøt', '#cdbfa3'), P('Overdel', 'Klassisk oxford-skjorte', 'Lys blå', '#aeb9c9')],
+        smart: [P('Overdel', 'Skjorte i bomullspoplin', 'Hvit', '#f4f1ea'), P('Overdel', 'Finstrikket rullekrage', 'Kull', '#2b2b30'), P('Overdel', 'Silkebluse med knapper', 'Champagne', '#d8c7a8')],
+        formal: [P('Overdel', 'Presset smokingskjorte', 'Hvit', '#f6f3ec'), P('Overdel', 'Sateng-topp med drapering', 'Dyp burgunder', '#5c2b34')],
+        active: [P('Overdel', 'Fukttransporterende treningstopp', 'Slate', '#3c4250'), P('Overdel', 'Lett løpe-singlet', 'Lime', '#a7c957')]
+      },
+      bottoms: {
+        casual: [P('Bukse', 'Rette jeans i selvkant-denim', 'Indigo', '#33405a'), P('Bukse', 'Myke chinos', 'Olivengrønn', '#5c5f43'), P('Bukse', 'Avslappet kordfløyel', 'Rust', '#a5602f')],
+        smart: [P('Bukse', 'Pressede dressbukser', 'Marineblå', '#26344f'), P('Bukse', 'Tailored ullbukse', 'Antrasitt', '#3a3a3f'), P('Skjørt', 'A-formet midiskjørt', 'Kamel', '#b6925d')],
+        formal: [P('Bukse', 'Smoking-bukse med satengstripe', 'Sort', '#161618'), P('Kjole', 'Gulvlang aftenkjole', 'Smaragd', '#1f5c4a')],
+        active: [P('Bukse', 'Smale joggebukser', 'Heather grå', '#7c7c84'), P('Shorts', 'Lette løpeshorts', 'Sort', '#1c1c1e')]
+      },
+      outer: {
+        warm: [P('Yttertøy', 'Strukturert ulljakke', 'Kamel', '#b08552'), P('Yttertøy', 'Lang dunfrakk', 'Mørk grønn', '#33402f')],
+        mid: [P('Yttertøy', 'Klassisk trenchcoat', 'Beige', '#cbb893'), P('Yttertøy', 'Skinnjakke i biker-snitt', 'Sort', '#1a1a1c')],
+        rain: [P('Yttertøy', 'Vannavstøtende parkas', 'Flaskegrønn', '#2f4538')]
+      },
+      shoes: {
+        casual: [P('Sko', 'Hvite skinnsneakers', 'Hvit', '#eceae3'), P('Sko', 'Robuste chelsea-boots', 'Brun', '#5b3b27')],
+        smart: [P('Sko', 'Loafers i pusset skinn', 'Cognac', '#7d4f2c'), P('Sko', 'Spisse ankelstøvletter', 'Sort', '#1c1c1e')],
+        formal: [P('Sko', 'Blanke oxford-sko', 'Sort', '#141416'), P('Sko', 'Stiletthæl i sateng', 'Nude', '#caa57e')],
+        active: [P('Sko', 'Dempede løpesko', 'Grå/volt', '#6f7480')]
+      },
+      access: {
+        casual: [P('Tilbehør', 'Strikket lue', 'Grå', '#8a8a90'), P('Tilbehør', 'Skinnbelte', 'Brun', '#6e4f37'), P('Tilbehør', 'Solbriller i aketat', 'Skilpadde', '#5a3b22')],
+        smart: [P('Tilbehør', 'Strukturert skulderveske', 'Cognac', '#8a5a30'), P('Tilbehør', 'Minimalistisk klokke', 'Stål', '#9aa0a6')],
+        formal: [P('Tilbehør', 'Silkesløyfe', 'Sort', '#1c1c1e'), P('Tilbehør', 'Clutch i sateng', 'Gull', '#c9a44c')],
+        active: [P('Tilbehør', 'Pannebånd som fukter', 'Sort', '#1c1c1e')]
+      }
+    };
+  })();
+
+  var OCC_MAP = {
+    'Hverdag / casual': 'casual', 'Jobb / kontor': 'smart', 'Jobbintervju': 'smart',
+    'Date': 'smart', 'Fest / kveld ute': 'smart', 'Bryllup (gjest)': 'formal',
+    'Trening / aktiv': 'active', 'Reise': 'casual', 'Formelt / galla': 'formal'
+  };
+  var VIBES = {
+    casual: ['Avslappet', 'Hverdag', 'Easy'], smart: ['Polert', 'Smart', 'Forfinet'],
+    formal: ['Elegant', 'Aften', 'Galla'], active: ['Sporty', 'I bevegelse', 'Aktiv']
+  };
+  var NAMES = {
+    casual: ['Søndagsmodus', 'Bykledd', 'Lett & ledig', 'Helgevibb'],
+    smart: ['Kontorklar', 'Den polerte', 'Møteklar', 'Byelegant'],
+    formal: ['Røde løperen', 'Aftenglød', 'Den formelle', 'Sort slips'],
+    active: ['I bevegelse', 'Pulsen oppe', 'Aktiv & klar', 'Treningsdag']
+  };
+
+  function pick(arr, n) {
+    var copy = arr.slice(); var out = [];
+    for (var i = 0; i < n && copy.length; i++) out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+    return out;
+  }
+
+  function localOutfits(f) {
+    var bucket = OCC_MAP[f.occasion] || 'casual';
+    var cold = f.weather === 'kaldt', cool = f.weather === 'kjølig', rain = f.weather === 'regn', warm = f.weather === 'varmt';
+    var out = [];
+    for (var i = 0; i < f.count; i++) {
+      var items = [];
+      items.push(pick(WARDROBE.tops[bucket], 1)[0]);
+      items.push(pick(WARDROBE.bottoms[bucket], 1)[0]);
+      // outer layer depending on weather
+      if (rain) items.push(WARDROBE.outer.rain[0]);
+      else if (cold) items.push(pick(WARDROBE.outer.warm, 1)[0]);
+      else if (cool) items.push(pick(WARDROBE.outer.mid, 1)[0]);
+      items.push(pick(WARDROBE.shoes[bucket], 1)[0]);
+      // accessory — more if not warm, always one styling element
+      items.push(pick(WARDROBE.access[bucket], 1)[0]);
+      if (!warm && bucket !== 'active' && Math.random() > 0.5) {
+        var extra = pick(WARDROBE.access[bucket], 1)[0];
+        if (extra && extra.description !== items[items.length - 1].description) items.push(extra);
+      }
+
+      var nm = NAMES[bucket]; var vb = VIBES[bucket];
+      var colorNote = f.colors.length ? ' med en hint av ' + f.colors[Math.floor(Math.random() * f.colors.length)].toLowerCase() : '';
+      var styleNote = f.styles.length ? f.styles[Math.floor(Math.random() * f.styles.length)].toLowerCase() : 'balansert';
+      out.push({
+        name: nm[i % nm.length],
+        vibe: vb[i % vb.length],
+        items: items,
+        why: 'Et ' + styleNote + ' antrekk satt sammen for «' + f.occasion.toLowerCase() + '» i ' + f.weather + ' vær' + colorNote + '. Lagene gir både komfort og en gjennomtenkt silhuett.',
+        stylingTip: warm ? 'Brett opp ermene og hold tilbehøret lett for en luftig følelse.' :
+                    cold ? 'Lag dybde med tonale lag — la det ytterste plagget bli ankeret i looken.' :
+                    'Trekk frem én farge fra antrekket i tilbehøret for å binde looken sammen.'
+      });
+    }
+    return out;
+  }
+
+  // ---------- Render ----------
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function renderOutfits(outfits, viaAI) {
+    var html = '<div class="results-head"><h2>Dine antrekk</h2><span>' + (viaAI ? 'Generert av Claude' : 'Innebygd motor') + '</span></div>';
+    outfits.forEach(function (o, idx) {
+      var swatches = (o.items || []).slice(0, 5).map(function (it) {
+        return '<span class="swatch" style="background:' + esc(it.colorHex || '#555') + '"></span>';
+      }).join('');
+      var items = (o.items || []).map(function (it) {
+        return '<div class="item">' +
+          '<span class="item-chip" style="background:' + esc(it.colorHex || '#555') + '"></span>' +
+          '<div class="item-text"><div class="item-cat">' + esc(it.category || '') + '</div>' +
+          '<div class="item-desc">' + esc(it.description || '') + (it.color ? ' · ' + esc(it.color) : '') + '</div></div>' +
+          '</div>';
+      }).join('');
+      html += '<div class="outfit" style="animation-delay:' + (idx * 70) + 'ms">' +
+        '<div class="outfit-top"><div><div class="outfit-name">' + esc(o.name || ('Antrekk ' + (idx + 1))) + '</div>' +
+        (o.vibe ? '<span class="outfit-vibe">' + esc(o.vibe) + '</span>' : '') + '</div>' +
+        '<div class="outfit-swatches">' + swatches + '</div></div>' +
+        '<div class="items">' + items + '</div>' +
+        (o.why ? '<div class="outfit-why">' + esc(o.why) + '</div>' : '') +
+        (o.stylingTip ? '<div class="outfit-tip"><b>Tips:</b> ' + esc(o.stylingTip) + '</div>' : '') +
+        '</div>';
+    });
+    $('results').innerHTML = html;
+    $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderSkeleton(n) {
+    var blocks = '';
+    for (var i = 0; i < n; i++) {
+      blocks += '<div class="outfit"><div class="sk-bar" style="height:20px;width:45%;margin-bottom:14px"></div>' +
+        '<div class="sk-bar" style="height:54px;margin-bottom:8px"></div>' +
+        '<div class="sk-bar" style="height:54px;margin-bottom:8px"></div>' +
+        '<div class="sk-bar" style="height:54px"></div></div>';
+    }
+    $('results').innerHTML = '<div class="results-head"><h2>Stiler antrekk…</h2><span>Claude tenker</span></div>' +
+      '<div class="skeleton">' + blocks + '</div>';
+  }
+
+  // ---------- Submit ----------
+  function setLoading(on) {
+    var btn = $('go');
+    btn.disabled = on;
+    $('goLabel').innerHTML = on ? '<span class="spin"></span> Lager…' : 'Lag antrekk';
+  }
+
+  function generate() {
+    hideStatus();
+    var f = collect();
+    if (!f.styles.length) { showStatus('info', 'Velg minst én stil-preferanse.'); return; }
+    try { localStorage.setItem(LS_FORM, JSON.stringify({ styles: f.styles, colors: f.colors })); } catch (e) {}
+
+    var key = getKey();
+    if (!key) {
+      // Offline engine — instant
+      setLoading(true);
+      setTimeout(function () {
+        renderOutfits(localOutfits(f), false);
+        setLoading(false);
+      }, 280);
+      return;
+    }
+
+    setLoading(true);
+    renderSkeleton(f.count);
+    callClaude(f).then(function (outfits) {
+      renderOutfits(outfits, true);
+      setLoading(false);
+    }).catch(function (err) {
+      setLoading(false);
+      showStatus('err', 'AI-stylisten feilet: ' + err.message + ' — viser antrekk fra innebygd motor i stedet.');
+      renderOutfits(localOutfits(f), false);
+    });
+  }
+
+  $('form').addEventListener('submit', function (e) { e.preventDefault(); generate(); });
+
+  // ---------- Surprise me ----------
+  $('surprise').addEventListener('click', function () {
+    var occ = $('occasion'); occ.selectedIndex = Math.floor(Math.random() * occ.options.length);
+    var wea = $('weather'); wea.selectedIndex = Math.floor(Math.random() * wea.options.length);
+    // random style chips
+    styleSel.clear();
+    var picks = pick(STYLES, 1 + Math.floor(Math.random() * 2));
+    picks.forEach(function (p) { styleSel.add(p); });
+    Array.prototype.forEach.call($('styleChips').children, function (c) {
+      c.classList.toggle('on', styleSel.has(c.textContent));
+    });
+    generate();
+  });
+
+  // ---------- Restore last chip selections ----------
+  try {
+    var saved = JSON.parse(localStorage.getItem(LS_FORM));
+    if (saved) {
+      if (saved.styles) {
+        styleSel.clear(); saved.styles.forEach(function (s) { styleSel.add(s); });
+        Array.prototype.forEach.call($('styleChips').children, function (c) { c.classList.toggle('on', styleSel.has(c.textContent)); });
+      }
+      if (saved.colors) {
+        saved.colors.forEach(function (s) { colorSel.add(s); });
+        Array.prototype.forEach.call($('colorChips').children, function (c) {
+          colorSel.forEach(function (lbl) { if (c.textContent === lbl) c.classList.add('on'); });
+        });
+      }
+    }
+  } catch (e) {}
+
+  // Empty state
+  $('results').innerHTML = '<div class="empty">Fyll ut skjemaet og trykk <b>Lag antrekk</b> — eller trykk 🎲 for en overraskelse.</div>';
+})();
+</script>
+</body>
+</html>

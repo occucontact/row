@@ -272,6 +272,10 @@ body.topbar-modal-open {
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">FINANCE</span>
   </a>
+  <a href="outfits.html" class="topbar-pill topbar-nav" id="topbarOutfits">
+    <span class="topbar-pill-dot"></span>
+    <span class="topbar-pill-label">STYLE</span>
+  </a>
   <div class="topbar-profile-wrap" id="topbarProfileWrap" style="display:none">
     <button class="topbar-profile-btn" id="topbarProfileBtn" type="button" aria-haspopup="true" aria-expanded="false">
       <span id="topbarProfileInit"></span>
