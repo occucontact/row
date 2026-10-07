@@ -1023,12 +1023,9 @@ main {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   if (typeof initCloudSync !== 'function') return;
-  initCloudSync({
-    appKey: 'health',
-    syncedKeys: ['stack:items', 'stack:version', 'stack:low', 'po_water_v1'],
-    syncedPrefixes: ['stack:taken:'],
+  initCloudSync(Object.assign({}, window.SYNC_CONFIGS.health, {
     onApplied: function () { window.dispatchEvent(new Event('storage')); }
-  });
+  }));
 });
 </script>
 

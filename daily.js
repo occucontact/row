@@ -770,15 +770,13 @@
     // sync.js is deferred, so it is defined by DOMContentLoaded.
     document.addEventListener('DOMContentLoaded', () => {
       if (typeof window.initCloudSync !== 'function') return;
-      window.initCloudSync({
-        appKey: 'daily',
-        syncedKeys: [LOG_KEY, META_KEY],
+      window.initCloudSync(Object.assign({}, window.SYNC_CONFIGS.daily, {
         onApplied: () => {
           buildList();
           render();
           window.dispatchEvent(new Event('storage'));   // refresh topbar streak
         }
-      });
+      }));
     });
 
     setInterval(() => {

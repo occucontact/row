@@ -302,7 +302,7 @@ def run_summaries(force: bool) -> int:
     today = dt.date.today()  # noqa: DTZ011 — local calendar dates, like Garmin
     failed = 0
     for profile in hs.SUMMARY_PROFILES:
-        keys = [f"{profile}-{part}" for part in ("garmin", "daily", "health", "goals", "po-coach", "summary")]
+        keys = [f"{profile}-{part}" for part in ("garmin", "daily", "health", "goals", "habits", "po-coach", "summary")]
         rows = {r["key"]: r["data"] for r in fetch_rows(keys)}
         existing = rows.get(f"{profile}-summary") or {}
         if not force and not hs.is_due(existing, today):

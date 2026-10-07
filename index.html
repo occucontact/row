@@ -14,6 +14,7 @@
 <script src="garmin.js" defer></script>
 <script src="summary.js" defer></script>
 <script src="topbar.js" defer></script>
+<script src="habits.js" defer></script>
 <style>
 :root {
   --text-primary:    #e6edf3;
@@ -667,6 +668,8 @@ body::after {
     </div>
   </div>
 
+  <section class="hb-card" id="habitsCard" aria-label="Faste vaner" hidden></section>
+
   <div class="section">
     <div class="section-title">Gjøremål</div>
 
@@ -1317,13 +1320,14 @@ body::after {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   if (typeof initCloudSync !== 'function') return;
-  initCloudSync({
-    appKey: 'goals',
-    syncedPrefixes: ['goals:'],
-    onApplied: function () {
-      window.dispatchEvent(new CustomEvent('goals-changed'));
-      window.dispatchEvent(new Event('storage'));
-    }
+  var refresh = function () {
+    window.dispatchEvent(new CustomEvent('goals-changed'));
+    window.dispatchEvent(new Event('storage'));
+  };
+  // Goals, plus the rows the habits card reads (daily routine, supplements)
+  // and writes (reading, journal).
+  ['goals', 'health', 'daily', 'habits'].forEach(function (name) {
+    initCloudSync(Object.assign({}, window.SYNC_CONFIGS[name], { onApplied: refresh }));
   });
 });
 </script>

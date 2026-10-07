@@ -12,6 +12,16 @@
 
   const PUSH_DEBOUNCE_MS = 250;
 
+  // One definition per cloud row, shared by every page that syncs it, so a
+  // page can never push a partial key set and drop another page's keys.
+  window.SYNC_CONFIGS = Object.freeze({
+    goals:  { appKey: 'goals',  syncedPrefixes: ['goals:'] },
+    health: { appKey: 'health', syncedKeys: ['stack:items', 'stack:version', 'stack:low', 'po_water_v1'],
+              syncedPrefixes: ['stack:taken:'] },
+    daily:  { appKey: 'daily',  syncedKeys: ['daily:log', 'daily:meta'] },
+    habits: { appKey: 'habits', syncedKeys: ['habits:reading', 'habits:journal'] },
+  });
+
   window.initCloudSync = function (config) {
     const baseKey = config && config.appKey;
     const appKey = (window.activeProfile ? window.activeProfile.toLowerCase() + '-' : '') + (baseKey || '');

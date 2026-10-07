@@ -309,13 +309,63 @@ body.topbar-modal-open {
   }
 
   // -------- Read progress from localStorage --------
+  function shiftKey(k, n) {
+    const p = k.split('-').map(Number);
+    const d = new Date(p[0], p[1] - 1, p[2] + n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function readJSON(key, fallback) {
+    try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
+  }
+
+  // -------- Fixed daily habits --------
+  // Single source of truth for "is this habit done on this day"; the home
+  // page's habits card (habits.js) uses it via window.dashHabits.
+  const HABITS = [
+    { id: 'daily',   label: 'Daglig rutine', icon: '🧘', href: 'daily.html' },
+    { id: 'stack',   label: 'Kosttilskudd',  icon: '💊', href: 'health.html' },
+    { id: 'read',    label: 'Lese',          icon: '📖' },
+    { id: 'journal', label: 'Journal',       icon: '✍️' },
+  ];
+  const HABIT_STREAK_CAP = 3650;
+
+  function habitDone(id, dateKey) {
+    if (id === 'daily') return !!((readJSON('daily:log', {})[dateKey] || {}).done);
+    if (id === 'stack') {
+      const items = readJSON('stack:items', []);
+      if (!Array.isArray(items) || !items.length) return false;
+      const taken = readJSON('stack:taken:' + dateKey, {}) || {};
+      return items.every(i => i && taken[i.id]);
+    }
+    if (id === 'read') {
+      const day = ((readJSON('habits:reading', {}) || {}).log || {})[dateKey] || {};
+      return Object.values(day).some(p => Number(p) > 0);
+    }
+    if (id === 'journal') {
+      const e = (readJSON('habits:journal', {}) || {})[dateKey] || {};
+      return !!(String(e.did || '').trim() && String(e.tomorrow || '').trim());
+    }
+    return false;
+  }
+  function habitStreak(id) {
+    let k = activeDateKey();
+    if (!habitDone(id, k)) k = shiftKey(k, -1);
+    let n = 0;
+    while (n < HABIT_STREAK_CAP && habitDone(id, k)) { n++; k = shiftKey(k, -1); }
+    return n;
+  }
+  window.dashHabits = { list: HABITS, done: habitDone, streak: habitStreak, activeDateKey: activeDateKey, shiftKey: shiftKey };
+
+  // GOALS pill = today's goals + the fixed habits.
   function getGoalsProgress() {
-    const key = 'goals:' + activeDateKey();
-    let goals = [];
-    try { goals = JSON.parse(localStorage.getItem(key)) || []; } catch (e) {}
-    const total = Array.isArray(goals) ? goals.length : 0;
-    const done = total ? goals.filter(g => g && g.done).length : 0;
-    return { done, total };
+    const today = activeDateKey();
+    const goals = readJSON('goals:' + today, []);
+    const list = Array.isArray(goals) ? goals : [];
+    const habitsDone = HABITS.filter(h => habitDone(h.id, today)).length;
+    return {
+      done: list.filter(g => g && g.done).length + habitsDone,
+      total: list.length + HABITS.length
+    };
   }
 
   function getStackProgress() {
@@ -358,20 +408,7 @@ body.topbar-modal-open {
 
   // Daily mobility streak — reads the same 'daily:log' object daily.html writes.
   function getDailyProgress() {
-    let log = {};
-    try { log = JSON.parse(localStorage.getItem('daily:log')) || {}; } catch (e) {}
-    const isDone = k => !!(log[k] && log[k].done);
-    const shift = (k, n) => {
-      const p = k.split('-').map(Number);
-      const d = new Date(p[0], p[1] - 1, p[2] + n);
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    };
-    const today = activeDateKey();
-    const doneToday = isDone(today);
-    let k = doneToday ? today : shift(today, -1);
-    let streak = 0;
-    while (isDone(k)) { streak++; k = shift(k, -1); }
-    return { streak, doneToday };
+    return { streak: habitStreak('daily'), doneToday: habitDone('daily', activeDateKey()) };
   }
 
   function classifyStatus(done, total) {

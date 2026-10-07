@@ -39,7 +39,7 @@ Regler:
 **Kort fortalt:** én eller to setninger.
 **Søvn og restitusjon:** ...
 **Aktivitet:** ...
-**Vaner:** daily-mobilitet, kosttilskudd og mål.
+**Vaner:** de faste vanene (daglig rutine, kosttilskudd, lesing, journal) og dagens mål.
 **Neste {days} dager:**
 - konkret råd
 - konkret råd
@@ -128,6 +128,28 @@ def _habit_facts(rows: dict, profile: str, period: list[str]) -> dict:
     }
 
 
+def _reading_journal_facts(rows: dict, profile: str, period: list[str]) -> dict:
+    habits = rows.get(f"{profile}-habits") or {}
+    reading = habits.get("habits:reading") or {}
+    books = {b.get("id"): b for b in reading.get("books") or [] if isinstance(b, dict)}
+    log = reading.get("log") or {}
+    pages = {d: sum(int(p) for p in (log.get(d) or {}).values() if isinstance(p, (int, float))) for d in period}
+    journal = habits.get("habits:journal") or {}
+
+    def journaled(day: str) -> bool:
+        e = journal.get(day) or {}
+        return bool(str(e.get("did", "")).strip() and str(e.get("tomorrow", "")).strip())
+
+    current = books.get(reading.get("activeBookId")) or {}
+    return {
+        "readingPagesPerDay": pages,
+        "readingDays": sum(1 for v in pages.values() if v > 0),
+        "currentBook": {k: current.get(k) for k in ("title", "totalPages")} if current else None,
+        "booksFinishedInPeriod": [b.get("title") for b in books.values() if b.get("finishedAt") in period],
+        "journalDays": sum(1 for d in period if journaled(d)),
+    }
+
+
 def build_facts(rows: dict, profile: str, today: dt.date) -> dict:
     end = today - dt.timedelta(days=1)   # last complete day
     period = _span(end, PERIOD_DAYS)
@@ -138,6 +160,7 @@ def build_facts(rows: dict, profile: str, today: dt.date) -> dict:
         "garmin": _garmin_facts(rows, profile, today, period, baseline),
         "dailyMobility": _daily_facts(rows, profile, today, period),
         "habits": _habit_facts(rows, profile, period),
+        "readingAndJournal": _reading_journal_facts(rows, profile, period),
         "bodyWeightLatest": weights[-1] if weights else None,
     }
 

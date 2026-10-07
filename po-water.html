@@ -1120,14 +1120,10 @@ html, body {
 document.addEventListener('DOMContentLoaded', function () {
   try { if (window.self !== window.top) return; } catch (e) { return; }
   if (typeof initCloudSync !== 'function') return;
-  initCloudSync({
-    appKey: 'health',
-    // Same row as health.html — must sync the same keys, or a push from
-    // here would drop the supplement stack from the shared row.
-    syncedKeys: ['stack:items', 'stack:version', 'stack:low', 'po_water_v1'],
-    syncedPrefixes: ['stack:taken:'],
+  // Same row as health.html — the shared config keeps the key sets identical.
+  initCloudSync(Object.assign({}, window.SYNC_CONFIGS.health, {
     onApplied: function () { window.dispatchEvent(new Event('storage')); }
-  });
+  }));
 });
 </script>
 
