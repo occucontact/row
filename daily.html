@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<title>Daily</title>
+<script src="profile.js"></script>
+<script src="locale.js"></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #050506;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary: #FAFAFA;
+  --text-secondary: #B8B6B0;
+  --text-tertiary: #76746E;
+  --accent: #C6F36D;
+  --accent-dim: rgba(198,243,109,0.14);
+  --accent-glow: rgba(198,243,109,0.35);
+  --success: #6BE3A4;
+  --warning: #F2C063;
+  --danger: #FF6B6B;
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(50% 40% at 80% 8%, rgba(198,243,109,0.09) 0%, transparent 60%),
+    radial-gradient(45% 35% at 15% 90%, rgba(107,227,164,0.06) 0%, transparent 60%);
+  filter: blur(40px);
+}
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.014) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+main {
+  max-width: 560px; margin: 0 auto;
+  padding: 28px 16px calc(120px + env(safe-area-inset-bottom));
+  position: relative; z-index: 1;
+}
+
+/* ---------- Header ---------- */
+.dy-eyebrow {
+  font: 800 10px/1 var(--font-mono); letter-spacing: 0.2em;
+  color: var(--accent); text-transform: uppercase;
+}
+.dy-header h1 {
+  font-size: 34px; font-weight: 800; letter-spacing: -0.03em;
+  color: var(--text-primary); line-height: 1.05; margin-top: 8px;
+}
+.dy-header p { font-size: 13px; color: var(--text-tertiary); margin-top: 4px; }
+
+/* ---------- Hero: clock + streak ---------- */
+.dy-hero {
+  margin-top: 22px;
+  display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: end;
+  padding: 22px 20px 18px;
+  border-radius: 20px;
+  background:
+    linear-gradient(160deg, rgba(198,243,109,0.07) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0.03) 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  position: relative; overflow: hidden;
+}
+.dy-hero.is-done { border-color: rgba(198,243,109,0.28); }
+.dy-hero.pop { animation: dy-pop 0.7s var(--ease-out); }
+@keyframes dy-pop { 0% { transform: scale(0.98); } 40% { transform: scale(1.015); } 100% { transform: scale(1); } }
+.dy-clock-label, .dy-streak-label {
+  font: 800 9.5px/1 var(--font-mono); letter-spacing: 0.18em;
+  color: var(--text-tertiary); text-transform: uppercase;
+}
+.dy-clock {
+  font: 700 52px/1 var(--font-mono); letter-spacing: -0.04em;
+  color: var(--text-primary); font-variant-numeric: tabular-nums;
+  margin-top: 10px;
+}
+.dy-hero.is-running .dy-clock { color: var(--accent); }
+.dy-clock-state { font-size: 12px; color: var(--text-tertiary); margin-top: 6px; min-height: 18px; }
+.dy-streak { text-align: right; }
+.dy-streak-num {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: 4px;
+  font: 800 44px/1 var(--font-mono); color: var(--text-primary);
+  margin-top: 10px; font-variant-numeric: tabular-nums;
+}
+.dy-streak-num small { font-size: 13px; color: var(--text-tertiary); font-weight: 700; }
+.dy-flame { font-size: 26px; filter: grayscale(1) opacity(0.4); transition: filter 0.3s; }
+.dy-hero.is-done .dy-flame { filter: drop-shadow(0 0 10px var(--accent-glow)); }
+.dy-streak-risk { font-size: 11.5px; color: var(--warning); margin-top: 6px; min-height: 16px; }
+.dy-progress {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 12px;
+}
+.dy-bar { flex: 1; height: 6px; border-radius: 6px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.dy-bar-fill {
+  height: 100%; width: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, var(--success), var(--accent));
+  transform-origin: left; transform: scaleX(0);
+  transition: transform 0.5s var(--ease-out);
+}
+.dy-progress-count {
+  font: 700 12px/1 var(--font-mono); color: var(--text-secondary);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.dy-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+
+/* ---------- Buttons ---------- */
+.dy-btn {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 13px 14px; border-radius: 13px;
+  font: 700 14px/1 var(--font); letter-spacing: 0.02em;
+  cursor: pointer; border: 1px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.dy-btn:active { transform: scale(0.97); }
+.dy-btn:focus-visible, .ex-check:focus-visible, .chip:focus-visible, .ex-timer:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.dy-btn-primary { background: var(--accent); color: #0B0D06; }
+.dy-btn-primary:hover { background: #D4F88A; }
+.dy-btn-ghost { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); color: var(--text-secondary); }
+.dy-btn-ghost:hover { background: rgba(255,255,255,0.09); color: var(--text-primary); }
+.dy-btn[hidden] { display: none; }
+
+/* ---------- Stats ---------- */
+.dy-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.dy-stat {
+  padding: 12px 14px; border-radius: 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.dy-stat-val {
+  font: 700 18px/1.1 var(--font-mono); color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.dy-stat-label { font-size: 10.5px; color: var(--text-tertiary); margin-top: 4px; }
+
+/* ---------- Section labels ---------- */
+.dy-section { margin-top: 32px; }
+.dy-section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.dy-section-label {
+  font: 800 10px/1 var(--font-mono); letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text-tertiary);
+}
+.dy-section-meta { font-size: 11.5px; color: var(--text-tertiary); }
+
+/* ---------- Heatmap ---------- */
+.dy-heat {
+  display: grid; grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 4px;
+  padding: 14px; border-radius: 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.dy-heat-cell {
+  aspect-ratio: 1; border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+}
+.dy-heat-cell.partial { background: rgba(198,243,109,0.25); }
+.dy-heat-cell.done { background: var(--accent); box-shadow: 0 0 8px rgba(198,243,109,0.25); }
+.dy-heat-cell.today { outline: 1.5px solid var(--text-primary); outline-offset: 1px; }
+.dy-heat-cell.future { background: transparent; }
+
+/* ---------- Exercise list ---------- */
+.ex-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.ex {
+  display: grid; grid-template-columns: 40px 1fr; gap: 12px;
+  padding: 16px 16px 16px 12px;
+  border-radius: 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  transition: background 0.2s, border-color 0.2s, opacity 0.3s;
+}
+.ex:hover { background: var(--bg-card-hover); }
+.ex.is-checked { opacity: 0.55; border-color: rgba(198,243,109,0.16); }
+.ex.is-checked:hover { opacity: 0.8; }
+.ex.is-active { border-color: rgba(198,243,109,0.5); background: rgba(198,243,109,0.06); opacity: 1; }
+.ex-check {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  background: transparent; color: transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.12s;
+}
+.ex-check:hover { border-color: var(--accent); }
+.ex-check:active { transform: scale(0.9); }
+.ex-check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #0B0D06; }
+.ex-check svg { width: 16px; height: 16px; }
+.ex-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ex-num { font: 700 11px/1 var(--font-mono); color: var(--text-tertiary); }
+.ex h3 { font-size: 15.5px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.3; }
+.ex.is-checked h3 { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.3); }
+.ex-tag {
+  font: 800 9px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 6px; border-radius: 5px;
+  background: rgba(255,255,255,0.06); color: var(--text-secondary);
+}
+.ex-tag.opt { background: rgba(242,192,99,0.14); color: var(--warning); }
+.ex-dose {
+  font: 600 12.5px/1.45 var(--font-mono); color: var(--accent);
+  margin-top: 5px;
+}
+.ex-cue { font-size: 13px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
+.ex-why { font-size: 12px; color: var(--text-tertiary); margin-top: 6px; display: flex; gap: 6px; }
+.ex-why::before { content: '📌'; font-size: 11px; }
+.ex-note {
+  font-size: 12px; color: var(--warning); margin-top: 8px;
+  padding: 7px 10px; border-radius: 9px; background: rgba(242,192,99,0.07);
+}
+.ex-week { font-size: 11.5px; color: var(--text-tertiary); margin-top: 6px; }
+.ex-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.chip {
+  font: 700 12px/1 var(--font-mono);
+  padding: 8px 10px; border-radius: 9px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.chip:hover { background: rgba(255,255,255,0.08); }
+.chip[aria-pressed="true"] { background: var(--accent-dim); border-color: rgba(198,243,109,0.45); color: var(--accent); }
+.ex-timer {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 700 12.5px/1 var(--font);
+  padding: 9px 12px; border-radius: 10px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, transform 0.1s;
+}
+.ex-timer:hover { background: rgba(198,243,109,0.16); border-color: rgba(198,243,109,0.4); }
+.ex-timer:active { transform: scale(0.96); }
+.ex-max { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.ex-max label { font-size: 11px; color: var(--text-tertiary); display: flex; flex-direction: column; gap: 5px; }
+.ex-max input {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary); font: 700 18px/1 var(--font-mono);
+}
+.ex-max input:focus { outline: none; border-color: var(--accent); }
+.ex-record { font-size: 11.5px; color: var(--text-tertiary); margin-top: 8px; font-family: var(--font-mono); }
+
+/* ---------- Settings ---------- */
+.dy-settings {
+  margin-top: 28px; padding: 14px 16px; border-radius: 14px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  font-size: 13px;
+}
+.dy-settings summary { cursor: pointer; color: var(--text-secondary); font-weight: 600; }
+.dy-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.dy-settings input[type="date"] {
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary); padding: 8px 10px; border-radius: 9px;
+  font: 600 13px var(--font-mono); color-scheme: dark;
+}
+.dy-link-danger {
+  background: none; border: none; color: var(--danger); font: 600 13px var(--font); cursor: pointer;
+}
+
+/* ---------- Timer dock ---------- */
+.dock {
+  position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(528px, calc(100% - 24px));
+  transform: translate(-50%, 140%);
+  z-index: 50;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;
+  padding: 14px 14px 14px 16px; border-radius: 20px;
+  background: rgba(20,21,18,0.92);
+  border: 1px solid rgba(198,243,109,0.25);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  transition: transform 0.45s var(--ease-out);
+}
+.dock.open { transform: translate(-50%, 0); }
+.dock.gap { border-color: rgba(125,211,252,0.35); }
+.dock-ring { position: relative; width: 64px; height: 64px; }
+.dock-ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+.dock-ring circle { fill: none; stroke-width: 5; }
+.dock-ring .track { stroke: rgba(255,255,255,0.08); }
+.dock-ring .arc { stroke: var(--accent); stroke-linecap: round; transition: stroke 0.3s; }
+.dock.gap .dock-ring .arc { stroke: #7DD3FC; }
+.dock-secs {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 800 20px/1 var(--font-mono); color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.dock-name { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.25; }
+.dock-round { font: 600 12px/1.3 var(--font-mono); color: var(--accent); margin-top: 3px; }
+.dock.gap .dock-round { color: #7DD3FC; }
+.dock-btns { display: flex; gap: 6px; }
+.dock-btn {
+  width: 40px; height: 40px; border-radius: 12px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary); font-size: 15px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.dock-btn:hover { background: rgba(255,255,255,0.13); }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; top: calc(80px + env(safe-area-inset-top));
+  transform: translate(-50%, -12px); opacity: 0;
+  padding: 10px 16px; border-radius: 12px; z-index: 60;
+  background: #1c1c1e; border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-primary); font-size: 13px; font-weight: 600;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s var(--ease-out);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 480px) {
+  .dy-clock { font-size: 42px; }
+  .dy-streak-num { font-size: 36px; }
+  .dock { grid-template-columns: auto 1fr; }
+  .dock-btns { grid-column: 1 / -1; }
+  .dock-btn { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="dy-header">
+    <div class="dy-eyebrow">Daglig mobilitet</div>
+    <h1>Daily</h1>
+    <p id="dyDate"></p>
+  </header>
+
+  <section class="dy-hero" id="dyHero" aria-label="Dagens økt">
+    <div>
+      <div class="dy-clock-label">Øktid</div>
+      <div class="dy-clock" id="dyClock" role="timer" aria-live="off">00:00</div>
+      <div class="dy-clock-state" id="dyClockState"></div>
+    </div>
+    <div class="dy-streak">
+      <div class="dy-streak-label">Streak</div>
+      <div class="dy-streak-num"><span class="dy-flame" aria-hidden="true">🔥</span><span id="dyStreak">0</span><small>d</small></div>
+      <div class="dy-streak-risk" id="dyStreakRisk"></div>
+    </div>
+    <div class="dy-progress">
+      <div class="dy-bar"><div class="dy-bar-fill" id="dyBar"></div></div>
+      <span class="dy-progress-count" id="dyCount">0/0</span>
+    </div>
+    <div class="dy-actions">
+      <button class="dy-btn dy-btn-primary" id="dyStart" type="button">▶ Start økt</button>
+      <button class="dy-btn dy-btn-ghost" id="dyPause" type="button" hidden>❚❚ Pause</button>
+      <button class="dy-btn dy-btn-ghost" id="dyFinish" type="button" hidden>✓ Fullfør</button>
+      <button class="dy-btn dy-btn-ghost" id="dyReopen" type="button" hidden>↺ Gjenåpne økta</button>
+    </div>
+  </section>
+
+  <div class="dy-stats">
+    <div class="dy-stat"><div class="dy-stat-val" id="dyBest">0</div><div class="dy-stat-label">Beste streak</div></div>
+    <div class="dy-stat"><div class="dy-stat-val" id="dyTotal">0</div><div class="dy-stat-label">Økter totalt</div></div>
+    <div class="dy-stat"><div class="dy-stat-val" id="dyAvg">—</div><div class="dy-stat-label">Snittid</div></div>
+  </div>
+
+  <section class="dy-section" aria-labelledby="dyHeatLabel">
+    <div class="dy-section-head">
+      <span class="dy-section-label" id="dyHeatLabel">Siste 12 uker</span>
+      <span class="dy-section-meta">man → søn</span>
+    </div>
+    <div class="dy-heat" id="dyHeat"></div>
+  </section>
+
+  <section class="dy-section" aria-labelledby="dyProgLabel">
+    <div class="dy-section-head">
+      <span class="dy-section-label" id="dyProgLabel">Program</span>
+      <span class="dy-section-meta" id="dyWeek"></span>
+    </div>
+    <ol class="ex-list" id="dyList"></ol>
+  </section>
+
+  <details class="dy-settings">
+    <summary>Innstillinger</summary>
+    <div class="dy-settings-row">
+      <label for="dyStartDate">Programstart (styrer Copenhagen-ukene)</label>
+      <input type="date" id="dyStartDate">
+    </div>
+    <div class="dy-settings-row">
+      <span>Nullstill dagens økt</span>
+      <button class="dy-link-danger" id="dyReset" type="button">Nullstill</button>
+    </div>
+  </details>
+</main>
+
+<div class="dock" id="dock" role="region" aria-label="Nedtelling" aria-hidden="true">
+  <div class="dock-ring">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="track" cx="32" cy="32" r="28"/><circle class="arc" id="dockArc" cx="32" cy="32" r="28"/></svg>
+    <div class="dock-secs" id="dockSecs">0</div>
+  </div>
+  <div>
+    <div class="dock-name" id="dockName"></div>
+    <div class="dock-round" id="dockRound"></div>
+  </div>
+  <div class="dock-btns">
+    <button class="dock-btn" id="dockPause" type="button" aria-label="Pause">❚❚</button>
+    <button class="dock-btn" id="dockSkip" type="button" aria-label="Hopp til neste">⏭</button>
+    <button class="dock-btn" id="dockStop" type="button" aria-label="Stopp nedtelling">✕</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Constants ----------
+  const LOG_KEY = 'daily:log';
+  const META_KEY = 'daily:meta';
+  const ROLLOVER_HOUR = 6;          // same 06:00 day boundary as goals/topbar
+  const SIDE_GAP_SEC = 5;           // pause between sides/directions
+  const SET_GAP_SEC = 15;           // rest between sets
+  const COUNTDOWN_BEEPS = 3;        // short beeps for the last N seconds
+  const HEATMAP_WEEKS = 12;
+  const COPENHAGEN_EARLY_DAYS = 3;  // weeks 1–2: max 3 days a week
+  const TICK_MS = 200;
+  const TOAST_MS = 2600;
+  const RING_CIRC = 2 * Math.PI * 28;
+  const SIDES = ['Venstre', 'Høyre'];
+
+  const EXERCISES = [
+    { id: 'hip', name: 'Hoftesirkler + beinpendler', extra: true,
+      dose: '5 sirkler hver vei per bein · 10 pendler fram/tilbake + 10 sidelengs per bein',
+      cue: 'Hold deg i veggen, og hold overkroppen stille.',
+      why: 'Varmer opp hofteleddet før resten av økta' },
+    { id: 'tib', name: 'Tibialis Raise + Wall slide', dose: '2×20 + 2×20',
+      cue: 'Len deg mot veggen og løft tærne. Gå langsomt i topposisjonen.',
+      why: 'Fremmer kne- og ankelstabilitet' },
+    { id: 'plantar', name: 'Plantar Fascia Stretch + ulnar nerve-øvelse', dose: '1–2×30 sek',
+      cue: 'Knel med tærne bøyd under deg, og sitt bak på hælene.',
+      why: 'Avlaster fotbuen og forbedrer bevegelseskjeden',
+      timer: { secs: [30] } },
+    { id: 'couch', name: 'Couch Stretch', dose: '1×30–60 sek per side',
+      cue: 'Bakre fot opp mot veggen, fremre bein i lunge. Spenn setet på det bakre beinet og vipp bekkenet bakover før du presser hofta fram.',
+      why: 'Åpner hofteleddsbøyerne og rebalanserer bekkenet',
+      timer: { secs: [30, 45, 60], sides: SIDES } },
+    { id: 'atg', name: 'ATG Split Squat', dose: '2×5 per bein',
+      cue: 'Fremre kne langt fram, bakre bein strukket. Kontroller deg ned.',
+      why: 'Bygger kontrollert styrke og mobilitet i hofte og kne' },
+    { id: 'patrick', name: 'Patrick Step', dose: '1–2×6–10 per side',
+      cue: 'Stå på en kant, strekk ut foten og senk den frie hælen mot gulvet, press deg så opp.',
+      why: 'Styrker patella og VMO' },
+    { id: 'squat', name: 'Deep Bodyweight Squat Hold + Wall crawl', dose: '1×60 sek + 3×10',
+      cue: 'Gå dypt ned med hælene i gulvet. Hendene kan støtte balansen.',
+      why: 'Åpner hofte, rygg og bekken',
+      timer: { secs: [60] } },
+    { id: 'butterfly', name: 'Butterfly mot vegg', dose: '1×30–60 sek',
+      cue: 'Sitt med ryggen mot veggen og fotsålene sammen. Press knærne ned.',
+      why: 'Åpner hoftene og mobiliserer adduktorene',
+      timer: { secs: [30, 45, 60] } },
+    { id: 'frog', name: 'Frosk', extra: true, dose: '60 sek',
+      cue: 'Knærne bredt på et mykt underlag, leggene parallelle. Rugg rolig fram og tilbake.',
+      why: 'Tar adduktorene i en annen vinkel enn butterfly',
+      timer: { secs: [60] } },
+    { id: 'ninety', name: '90/90 Stretch', dose: '10 per side ×2',
+      cue: 'Én hofte i internrotasjon, én i ekstern. Len deg fram.',
+      why: 'Bedrer hoftefleksibilitet og rotasjonskontroll' },
+    { id: 'pigeon', name: 'Due (pigeon)', extra: true, dose: '45–60 sek per side',
+      cue: 'Er det ubehagelig i kneet, bytt til figur-4 liggende på ryggen.',
+      why: 'Tøyer setemuskulaturen og hoftens utadrotatorer',
+      timer: { secs: [45, 60], sides: SIDES } },
+    { id: 'hamstring', name: 'Liggende hamstring', extra: true, dose: '40 sek per side',
+      cue: 'Med strikk eller håndkle.',
+      why: 'Løsner baksiden av låret, som ofte låser bekkenet',
+      timer: { secs: [40], sides: SIDES } },
+    { id: 'copenhagen', name: 'Copenhagen-sideplanke', extra: true, optional: true,
+      cue: 'Albuen under skulderen og det øverste beinet på en benk. Løft hofta til kroppen er rett.',
+      why: 'Styrker adduktorene og forebygger lyskeplager',
+      note: 'Dropp den eller kjør den lett dagen før kamp.',
+      progression: copenhagenPlan },
+    { id: 'posture', name: 'Wall Posture Reset + thumb to finger', dose: '1×60 sek',
+      cue: 'Hele kroppen mot veggen. Press korsryggen og bakhodet jevnt mot veggen. Gjør thumb to finger med begge hender i motsatt rekkefølge av hverandre.',
+      why: 'Aktiverer den posturale kjeden',
+      timer: { secs: [60] } },
+    { id: 'neck', name: 'Nakke isometrisk', dose: '1×10–15 sek per retning',
+      cue: 'Press lett fram, bak, høyre og venstre, uten bevegelse.',
+      why: 'Fremmer nakkestabilitet og demper spenninger',
+      timer: { secs: [10, 15], sides: ['Fram', 'Bak', 'Høyre', 'Venstre'] } },
+    { id: 'hang', name: 'Passive Hang', dose: '2×20–30 sek · bygg opp til 1–2 min totalt',
+      cue: 'Heng med full armstrekk, med beina bøyd eller strake.',
+      why: 'Avlaster ryggen, åpner skuldrene og bedrer grepsstyrken',
+      timer: { secs: [20, 30, 45, 60], sets: 2 } },
+    { id: 'cobra', name: 'Prone Cobra Hold', dose: '2×30 sek',
+      cue: 'Ligg på magen og løft brystet og armene med bøyde albuer. Tærne peker i gulvet.',
+      why: 'Styrker ryggstrekkerne og scapula-retraktorene',
+      timer: { secs: [30], sets: 2 } },
+    { id: 'hipflexor', name: 'Hip Flexor Stretch', dose: '30 sek per side',
+      cue: 'Knelende lunge, press hofta fram.',
+      why: 'Motvirker sittende stilling og gir bedre bekkenkontroll',
+      timer: { secs: [30], sides: SIDES } },
+    { id: 'wgs', name: "World's Greatest Stretch", dose: '45 sek per side',
+      timer: { secs: [45], sides: SIDES } },
+    { id: 'max', name: 'Push-ups og dips', dose: 'Maks antall', kind: 'max' },
+  ];
+  const REQUIRED = EXERCISES.filter(e => !e.optional);
+
+  function copenhagenPlan(week) {
+    if (week <= 2) {
+      return { dose: 'Kort vektarm (kneet på benken) · 2×15–20 sek per side',
+        timer: { secs: [15, 20], sets: 2, sides: SIDES }, earlyPhase: true };
+    }
+    if (week <= 4) {
+      return { dose: '2×30 sek kort vektarm, eller lang vektarm (ankelen på benken) 2×15 sek per side',
+        timer: { secs: [30, 15], sets: 2, sides: SIDES } };
+    }
+    return { dose: 'Lang vektarm 2×30 sek, eller senk og løft hofta 2×8–10 per side',
+      timer: { secs: [30], sets: 2, sides: SIDES } };
+  }
+
+  // ---------- Dates ----------
+  const pad = n => String(n).padStart(2, '0');
+  const keyOf = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  function parseKey(k) { const p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function addDays(k, n) { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); }
+  function daysBetween(a, b) { return Math.round((parseKey(b) - parseKey(a)) / 86400000); }
+  function mondayOf(k) { const d = parseKey(k); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return keyOf(d); }
+  function today() {
+    const d = new Date();
+    if (d.getHours() < ROLLOVER_HOUR) d.setDate(d.getDate() - 1);
+    return keyOf(d);
+  }
+  const isValidKey = k => typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k);
+
+  // ---------- Storage (immutable updates) ----------
+  function readObj(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key));
+      return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    } catch (e) { return {}; }
+  }
+  function writeObj(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); }
+    catch (e) { showToast('Kunne ikke lagre – lagringen er full eller blokkert'); return; }
+    // Same-tab writes don't fire 'storage'; nudge topbar.js so the DAILY pill updates now.
+    window.dispatchEvent(new Event('storage'));
+  }
+  const getLog = () => readObj(LOG_KEY);
+  const getMeta = () => readObj(META_KEY);
+  const saveMeta = patch => writeObj(META_KEY, Object.assign({}, getMeta(), patch));
+  function emptyDay() {
+    return { checked: {}, elapsedMs: 0, startedAt: null, done: false, durationSec: 0, pushups: null, dips: null };
+  }
+  function getDay(k) {
+    const raw = getLog()[k] || {};
+    return Object.assign(emptyDay(), raw, { checked: Object.assign({}, raw.checked) });
+  }
+  function updateToday(fn) {
+    const k = today();
+    const next = fn(getDay(k));
+    writeObj(LOG_KEY, Object.assign({}, getLog(), { [k]: next }));
+    render();
+    return next;
+  }
+
+  // ---------- Streaks & stats ----------
+  const isDone = (log, k) => !!(log[k] && log[k].done);
+  function currentStreak(log) {
+    let k = today();
+    if (!isDone(log, k)) k = addDays(k, -1);
+    let n = 0;
+    while (isDone(log, k)) { n++; k = addDays(k, -1); }
+    return n;
+  }
+  function bestStreak(log) {
+    const keys = Object.keys(log).filter(k => isValidKey(k) && isDone(log, k)).sort();
+    let best = 0, run = 0, prev = null;
+    for (const k of keys) {
+      run = prev && daysBetween(prev, k) === 1 ? run + 1 : 1;
+      best = Math.max(best, run);
+      prev = k;
+    }
+    return best;
+  }
+  function programWeek() {
+    const start = getMeta().startDate;
+    if (!isValidKey(start)) return 1;
+    return Math.max(1, Math.floor(daysBetween(start, today()) / 7) + 1);
+  }
+  function copenhagenDaysThisWeek(log) {
+    const mon = mondayOf(today());
+    let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = log[addDays(mon, i)];
+      if (d && d.checked && d.checked.copenhagen) n++;
+    }
+    return n;
+  }
+  function resolved(ex) {
+    return ex.progression ? Object.assign({}, ex, ex.progression(programWeek())) : ex;
+  }
+
+  // ---------- Session clock ----------
+  const elapsedMs = d => (d.elapsedMs || 0) + (d.startedAt ? Date.now() - d.startedAt : 0);
+  function fmtClock(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return (h ? h + ':' + pad(m) : pad(m)) + ':' + pad(s % 60);
+  }
+  function startSession() {
+    if (!isValidKey(getMeta().startDate)) saveMeta({ startDate: today() });
+    updateToday(d => (d.startedAt || d.done) ? d : Object.assign({}, d, { startedAt: Date.now() }));
+    requestWakeLock();
+  }
+  function pauseSession() {
+    updateToday(d => d.startedAt ? Object.assign({}, d, { elapsedMs: elapsedMs(d), startedAt: null }) : d);
+    releaseWakeLock();
+  }
+  function finishSession() {
+    stopTimer();
+    updateToday(d => {
+      const ms = elapsedMs(d);
+      return Object.assign({}, d, {
+        elapsedMs: ms, startedAt: null, done: true,
+        durationSec: Math.round(ms / 1000), finishedAt: Date.now()
+      });
+    });
+    releaseWakeLock();
+    const hero = document.getElementById('dyHero');
+    hero.classList.remove('pop'); void hero.offsetWidth; hero.classList.add('pop');
+    beep(660, 0.12); setTimeout(() => beep(880, 0.25), 140);
+    showToast('Økt fullført 🔥 ' + currentStreak(getLog()) + ' dager på rad');
+  }
+  function reopenSession() { updateToday(d => Object.assign({}, d, { done: false })); }
+  function ensureRunning() {
+    const d = getDay(today());
+    if (!d.startedAt && !d.done) startSession();
+  }
+  function setChecked(id, value) {
+    updateToday(d => {
+      const checked = Object.assign({}, d.checked);
+      if (value) checked[id] = true; else delete checked[id];
+      return Object.assign({}, d, { checked });
+    });
+    maybeAutoFinish();
+  }
+  function maybeAutoFinish() {
+    const d = getDay(today());
+    if (!d.done && REQUIRED.every(e => d.checked[e.id])) finishSession();
+  }
+
+  // ---------- Sound, vibration, wake lock ----------
+  let audioCtx = null;
+  function unlockAudio() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+  function beep(freq, dur) {
+    if (!audioCtx) return;
+    try {
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + dur + 0.02);
+    } catch (e) { /* audio unavailable — the visual countdown still works */ }
+  }
+  const vibrate = p => { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} };
+
+  let wakeLock = null;
+  async function requestWakeLock() {
+    if (wakeLock || !('wakeLock' in navigator)) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { wakeLock = null; }
+  }
+  function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+
+  // ---------- Countdown timer ----------
+  let timer = null;   // { exId, name, rounds, idx, phase, endsAt, remainingMs, lastSec }
+  let timerLoop = null;
+
+  function buildRounds(t, sec) {
+    const sets = t.sets || 1;
+    const sides = t.sides || [null];
+    const rounds = [];
+    for (let s = 1; s <= sets; s++) {
+      sides.forEach((side, i) => {
+        const parts = [];
+        if (sets > 1) parts.push('Sett ' + s + '/' + sets);
+        if (side) parts.push(side);
+        rounds.push({ label: parts.join(' · ') || 'Hold', sec, gapAfter: i < sides.length - 1 ? SIDE_GAP_SEC : SET_GAP_SEC });
+      });
+    }
+    return rounds;
+  }
+  function selectedSec(ex) {
+    const chosen = (getMeta().secs || {})[ex.id];
+    return ex.timer.secs.indexOf(chosen) !== -1 ? chosen : ex.timer.secs[0];
+  }
+  function startTimer(id) {
+    const ex = resolved(EXERCISES.find(e => e.id === id));
+    if (!ex || !ex.timer) return;
+    unlockAudio();
+    ensureRunning();
+    const rounds = buildRounds(ex.timer, selectedSec(ex));
+    timer = { exId: id, name: ex.name, rounds, idx: 0, phase: 'work',
+      endsAt: Date.now() + rounds[0].sec * 1000, remainingMs: null, lastSec: null };
+    beep(880, 0.15);
+    clearInterval(timerLoop);
+    timerLoop = setInterval(tick, TICK_MS);
+    tick();
+  }
+  function stopTimer() {
+    clearInterval(timerLoop);
+    timerLoop = null;
+    timer = null;
+    renderDock(0);
+  }
+  function togglePauseTimer() {
+    if (!timer) return;
+    timer = timer.remainingMs != null
+      ? Object.assign({}, timer, { endsAt: Date.now() + timer.remainingMs, remainingMs: null })
+      : Object.assign({}, timer, { remainingMs: Math.max(0, timer.endsAt - Date.now()) });
+    tick();
+  }
+  function skipPhase() {
+    if (!timer) return;
+    timer = Object.assign({}, timer, { endsAt: Date.now(), remainingMs: null });
+    tick();
+  }
+  function tick() {
+    if (!timer) return;
+    const left = timer.remainingMs != null ? timer.remainingMs : timer.endsAt - Date.now();
+    const sec = Math.ceil(left / 1000);
+    if (timer.remainingMs == null && sec !== timer.lastSec) {
+      if (sec > 0 && sec <= COUNTDOWN_BEEPS) beep(timer.phase === 'work' ? 520 : 440, 0.08);
+      timer = Object.assign({}, timer, { lastSec: sec });
+    }
+    if (left <= 0) { advance(); return; }
+    renderDock(left);
+  }
+  function advance() {
+    const now = Date.now();
+    const round = timer.rounds[timer.idx];
+    if (timer.phase === 'gap') {
+      beep(880, 0.2); vibrate(120);
+      const next = timer.rounds[timer.idx + 1];
+      timer = Object.assign({}, timer, { phase: 'work', idx: timer.idx + 1, endsAt: now + next.sec * 1000, lastSec: null });
+    } else if (timer.idx >= timer.rounds.length - 1) {
+      const id = timer.exId, name = timer.name;
+      beep(660, 0.12); setTimeout(() => beep(990, 0.3), 140); vibrate([120, 80, 220]);
+      stopTimer();
+      showToast(name + ' ✓');
+      setChecked(id, true);
+      return;
+    } else {
+      beep(330, 0.35); vibrate(250);
+      timer = Object.assign({}, timer, { phase: 'gap', endsAt: now + round.gapAfter * 1000, lastSec: null });
+    }
+    tick();
+  }
+  function renderDock(leftMs) {
+    const dock = document.getElementById('dock');
+    document.querySelectorAll('.ex.is-active').forEach(el => el.classList.remove('is-active'));
+    if (!timer) {
+      dock.classList.remove('open', 'gap');
+      dock.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    const isGap = timer.phase === 'gap';
+    const round = timer.rounds[timer.idx];
+    const totalMs = (isGap ? round.gapAfter : round.sec) * 1000;
+    const next = timer.rounds[timer.idx + 1];
+    dock.classList.add('open');
+    dock.classList.toggle('gap', isGap);
+    dock.setAttribute('aria-hidden', 'false');
+    document.getElementById('dockName').textContent = timer.name;
+    document.getElementById('dockRound').textContent = isGap
+      ? 'Bytt · neste: ' + (next ? next.label : '')
+      : round.label + (timer.rounds.length > 1 ? '  (' + (timer.idx + 1) + '/' + timer.rounds.length + ')' : '');
+    document.getElementById('dockSecs').textContent = Math.max(0, Math.ceil(leftMs / 1000));
+    const arc = document.getElementById('dockArc');
+    arc.style.strokeDasharray = RING_CIRC;
+    arc.style.strokeDashoffset = RING_CIRC * (1 - Math.max(0, Math.min(1, leftMs / totalMs)));
+    const paused = timer.remainingMs != null;
+    const pauseBtn = document.getElementById('dockPause');
+    pauseBtn.textContent = paused ? '▶' : '❚❚';
+    pauseBtn.setAttribute('aria-label', paused ? 'Fortsett' : 'Pause');
+    const card = document.querySelector('.ex[data-id="' + timer.exId + '"]');
+    if (card) card.classList.add('is-active');
+  }
+
+  // ---------- Toast ----------
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), TOAST_MS);
+  }
+
+  // ---------- Build exercise list (static structure) ----------
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const CHECK_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>';
+
+  function timerLabel(t, sec) {
+    const sides = t.sides ? t.sides.length : 1;
+    const parts = [sec + ' s'];
+    if (sides === 2) parts.push('× 2 sider');
+    else if (sides > 2) parts.push('× ' + sides + ' retninger');
+    if ((t.sets || 1) > 1) parts.push('× ' + t.sets + ' sett');
+    return '▶ ' + parts.join(' ');
+  }
+  function cardHTML(rawEx, i) {
+    const ex = resolved(rawEx);
+    const tags = (ex.optional ? '<span class="ex-tag opt">Valgfri</span>' : '') +
+                 (ex.extra ? '<span class="ex-tag">Tillegg</span>' : '');
+    let tools = '';
+    if (ex.timer) {
+      const sel = selectedSec(ex);
+      const chips = ex.timer.secs.length > 1
+        ? ex.timer.secs.map(s => '<button type="button" class="chip" data-sec="' + s + '" aria-pressed="' + (s === sel) + '">' + s + 's</button>').join('')
+        : '';
+      tools = '<div class="ex-tools">' + chips +
+        '<button type="button" class="ex-timer">' + esc(timerLabel(ex.timer, sel)) + '</button></div>';
+    }
+    if (ex.kind === 'max') {
+      tools = '<div class="ex-max">' +
+        '<label>Push-ups<input type="number" inputmode="numeric" min="0" max="999" data-max="pushups" placeholder="0"></label>' +
+        '<label>Dips<input type="number" inputmode="numeric" min="0" max="999" data-max="dips" placeholder="0"></label>' +
+        '</div><div class="ex-record" id="dyRecord"></div>';
+    }
+    return '<li class="ex" data-id="' + ex.id + '">' +
+      '<button type="button" class="ex-check" aria-pressed="false" aria-label="Marker ' + esc(ex.name) + ' som gjort">' + CHECK_SVG + '</button>' +
+      '<div class="ex-body">' +
+        '<div class="ex-head"><span class="ex-num">' + pad(i + 1) + '</span><h3>' + esc(ex.name) + '</h3>' + tags + '</div>' +
+        '<p class="ex-dose">' + esc(ex.dose) + '</p>' +
+        (ex.cue ? '<p class="ex-cue">' + esc(ex.cue) + '</p>' : '') +
+        (ex.why ? '<p class="ex-why">' + esc(ex.why) + '</p>' : '') +
+        (ex.earlyPhase ? '<p class="ex-week" id="dyCphWeek"></p>' : '') +
+        (ex.note ? '<p class="ex-note">' + esc(ex.note) + '</p>' : '') +
+        tools +
+      '</div></li>';
+  }
+  function buildList() {
+    document.getElementById('dyList').innerHTML = EXERCISES.map(cardHTML).join('');
+  }
+
+  function onListClick(e) {
+    const card = e.target.closest('.ex');
+    if (!card) return;
+    const id = card.dataset.id;
+    if (e.target.closest('.ex-check')) {
+      unlockAudio();
+      const d = getDay(today());
+      if (!d.checked[id]) ensureRunning();
+      setChecked(id, !d.checked[id]);
+      return;
+    }
+    const chip = e.target.closest('.chip');
+    if (chip) {
+      const sec = Number(chip.dataset.sec);
+      saveMeta({ secs: Object.assign({}, getMeta().secs, { [id]: sec }) });
+      card.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+      const ex = resolved(EXERCISES.find(x => x.id === id));
+      card.querySelector('.ex-timer').textContent = timerLabel(ex.timer, sec);
+      return;
+    }
+    if (e.target.closest('.ex-timer')) startTimer(id);
+  }
+  function onMaxInput(e) {
+    const input = e.target.closest('[data-max]');
+    if (!input) return;
+    const n = parseInt(input.value, 10);
+    const value = Number.isFinite(n) && n >= 0 && n <= 999 ? n : null;
+    const field = input.dataset.max;
+    const d = getDay(today());
+    if (!d.startedAt && !d.done && value != null) startSession();
+    updateToday(day => Object.assign({}, day, { [field]: value }));
+    const after = getDay(today());
+    const hasAny = after.pushups != null || after.dips != null;
+    if (hasAny !== !!after.checked.max) setChecked('max', hasAny);
+  }
+
+  // ---------- Render ----------
+  function renderClock() {
+    const d = getDay(today());
+    document.getElementById('dyClock').textContent = fmtClock(elapsedMs(d));
+  }
+  function render() {
+    const log = getLog();
+    const k = today();
+    const d = getDay(k);
+    const running = !!d.startedAt;
+    const doneCount = REQUIRED.filter(e => d.checked[e.id]).length;
+
+    // Hero
+    const hero = document.getElementById('dyHero');
+    hero.classList.toggle('is-running', running);
+    hero.classList.toggle('is-done', d.done);
+    renderClock();
+    document.getElementById('dyClockState').textContent = d.done
+      ? 'Fullført ' + (d.finishedAt ? nb.clock(new Date(d.finishedAt)) : '')
+      : running ? 'Pågår…' : (d.elapsedMs ? 'På pause' : 'Ikke startet');
+    const streak = currentStreak(log);
+    document.getElementById('dyStreak').textContent = streak;
+    document.getElementById('dyStreakRisk').textContent =
+      !d.done && streak > 0 ? 'Gjør økta i dag for å holde streaken' : '';
+    document.getElementById('dyBar').style.transform = 'scaleX(' + (doneCount / REQUIRED.length) + ')';
+    document.getElementById('dyCount').textContent = doneCount + '/' + REQUIRED.length;
+
+    const show = (id, on) => { document.getElementById(id).hidden = !on; };
+    show('dyStart', !d.done && !running);
+    document.getElementById('dyStart').textContent = d.elapsedMs ? '▶ Fortsett' : '▶ Start økt';
+    show('dyPause', !d.done && running);
+    show('dyFinish', !d.done && (running || d.elapsedMs > 0 || doneCount > 0));
+    show('dyReopen', d.done);
+
+    // Stats
+    const doneDays = Object.keys(log).filter(x => isValidKey(x) && isDone(log, x));
+    const timed = doneDays.map(x => log[x].durationSec).filter(s => s > 0);
+    document.getElementById('dyBest').textContent = Math.max(bestStreak(log), streak);
+    document.getElementById('dyTotal').textContent = doneDays.length;
+    document.getElementById('dyAvg').textContent = timed.length
+      ? fmtClock(timed.reduce((a, b) => a + b, 0) / timed.length * 1000) : '—';
+
+    renderHeatmap(log, k);
+    renderChecks(d);
+    renderCopenhagen(log, d);
+    renderMax(log, d);
+  }
+  function renderHeatmap(log, todayKey) {
+    const start = addDays(mondayOf(todayKey), -(HEATMAP_WEEKS - 1) * 7);
+    const cells = [];
+    for (let i = 0; i < HEATMAP_WEEKS * 7; i++) {
+      const k = addDays(start, i);
+      const day = log[k];
+      const cls = ['dy-heat-cell'];
+      if (k > todayKey) cls.push('future');
+      else if (day && day.done) cls.push('done');
+      else if (day && day.checked && Object.keys(day.checked).length) cls.push('partial');
+      if (k === todayKey) cls.push('today');
+      cells.push('<div class="' + cls.join(' ') + '" title="' + nb.date(k) + '"></div>');
+    }
+    document.getElementById('dyHeat').innerHTML = cells.join('');
+  }
+  function renderChecks(d) {
+    document.querySelectorAll('.ex').forEach(card => {
+      const on = !!d.checked[card.dataset.id];
+      card.classList.toggle('is-checked', on);
+      card.querySelector('.ex-check').setAttribute('aria-pressed', String(on));
+    });
+  }
+  function renderCopenhagen(log, d) {
+    const week = programWeek();
+    document.getElementById('dyWeek').textContent = 'Uke ' + week;
+    const el = document.getElementById('dyCphWeek');
+    if (!el) return;
+    const n = copenhagenDaysThisWeek(log);
+    el.textContent = n >= COPENHAGEN_EARLY_DAYS && !d.checked.copenhagen
+      ? 'Uke 1–2: ' + n + '/' + COPENHAGEN_EARLY_DAYS + ' dager denne uka – hvil Copenhagen i dag.'
+      : 'Uke 1–2: bare ' + COPENHAGEN_EARLY_DAYS + ' dager i uka (' + n + '/' + COPENHAGEN_EARLY_DAYS + ' denne uka).';
+  }
+  function renderMax(log, d) {
+    document.querySelectorAll('[data-max]').forEach(input => {
+      if (document.activeElement === input) return;
+      const v = d[input.dataset.max];
+      input.value = v == null ? '' : v;
+    });
+    const rec = document.getElementById('dyRecord');
+    if (!rec) return;
+    const best = field => Math.max(0, ...Object.keys(log).map(k => Number(log[k] && log[k][field]) || 0));
+    const prevKey = Object.keys(log).filter(k => isValidKey(k) && k < today() &&
+      (log[k].pushups != null || log[k].dips != null)).sort().pop();
+    const prev = prevKey ? log[prevKey] : null;
+    rec.textContent = 'Rekord: ' + best('pushups') + ' push-ups · ' + best('dips') + ' dips' +
+      (prev ? '   ·   Sist (' + nb.date(prevKey) + '): ' + (prev.pushups ?? '–') + ' / ' + (prev.dips ?? '–') : '');
+  }
+
+  // ---------- Boot ----------
+  function boot() {
+    document.getElementById('dyDate').textContent = nb.dateLong(parseKey(today()));
+    buildList();
+
+    const startInput = document.getElementById('dyStartDate');
+    startInput.value = getMeta().startDate || '';
+    startInput.addEventListener('change', () => {
+      if (!isValidKey(startInput.value)) return;
+      saveMeta({ startDate: startInput.value });
+      buildList(); render();
+      showToast('Programstart satt – uke ' + programWeek());
+    });
+    document.getElementById('dyReset').addEventListener('click', () => {
+      if (!confirm('Nullstille dagens økt? Dette kan ikke angres.')) return;
+      stopTimer();
+      updateToday(() => emptyDay());
+      releaseWakeLock();
+    });
+
+    const list = document.getElementById('dyList');
+    list.addEventListener('click', onListClick);
+    list.addEventListener('change', onMaxInput);
+
+    document.getElementById('dyStart').addEventListener('click', () => { unlockAudio(); startSession(); });
+    document.getElementById('dyPause').addEventListener('click', pauseSession);
+    document.getElementById('dyFinish').addEventListener('click', finishSession);
+    document.getElementById('dyReopen').addEventListener('click', reopenSession);
+    document.getElementById('dockPause').addEventListener('click', togglePauseTimer);
+    document.getElementById('dockSkip').addEventListener('click', skipPhase);
+    document.getElementById('dockStop').addEventListener('click', stopTimer);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      if (getDay(today()).startedAt) requestWakeLock();
+      render();
+    });
+    // Only real cross-tab StorageEvents (ours above has no .key) — avoids a double render.
+    window.addEventListener('storage', e => { if (e.key !== undefined) render(); });
+
+    render();
+    if (getDay(today()).startedAt) requestWakeLock();
+    setInterval(renderClock, 1000);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -268,9 +268,10 @@ body.topbar-modal-open {
     <span class="topbar-pill-dot"></span>
     <span class="topbar-pill-label">KONDIS</span>
   </a>
-  <a href="finance.html" class="topbar-pill topbar-nav" id="topbarFinance">
+  <a href="daily.html" class="topbar-pill topbar-nav" id="topbarDaily">
     <span class="topbar-pill-dot"></span>
-    <span class="topbar-pill-label">FINANCE</span>
+    <span class="topbar-pill-label">DAILY</span>
+    <span class="topbar-pill-count" id="topbarDailyCount"></span>
   </a>
   <div class="topbar-profile-wrap" id="topbarProfileWrap" style="display:none">
     <button class="topbar-profile-btn" id="topbarProfileBtn" type="button" aria-haspopup="true" aria-expanded="false">
@@ -361,6 +362,24 @@ body.topbar-modal-open {
     return { done, total };
   }
 
+  // Daily mobility streak — reads the same 'daily:log' object daily.html writes.
+  function getDailyProgress() {
+    let log = {};
+    try { log = JSON.parse(localStorage.getItem('daily:log')) || {}; } catch (e) {}
+    const isDone = k => !!(log[k] && log[k].done);
+    const shift = (k, n) => {
+      const p = k.split('-').map(Number);
+      const d = new Date(p[0], p[1] - 1, p[2] + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
+    const today = activeDateKey();
+    const doneToday = isDone(today);
+    let k = doneToday ? today : shift(today, -1);
+    let streak = 0;
+    while (isDone(k)) { streak++; k = shift(k, -1); }
+    return { streak, doneToday };
+  }
+
   function classifyStatus(done, total) {
     if (total === 0) return 'idle';
     if (done >= total) return 'good';
@@ -396,6 +415,13 @@ body.topbar-modal-open {
     setPillStatus(goalsEl, classifyStatus(g.done, g.total));
     setPillStatus(stackEl, classifyStatus(s.done, s.total));
     setPillStatus(waterEl, classifyStatus(w.done, w.total));
+
+    const dailyEl = document.getElementById('topbarDaily');
+    if (dailyEl) {
+      const dy = getDailyProgress();
+      document.getElementById('topbarDailyCount').textContent = dy.streak ? '🔥' + dy.streak : '';
+      setPillStatus(dailyEl, dy.doneToday ? 'good' : classifyStatus(0, 1));
+    }
   }
 
   // -------- Water +1 (works from any page) --------
