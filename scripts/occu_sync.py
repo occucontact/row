@@ -8,6 +8,8 @@
     uv run occu_sync.py login            # once: sign in to Supabase (password is never stored)
     uv run occu_sync.py sync [--days N] [--profile P]  # Garmin → "<profile>-garmin" rows
     uv run occu_sync.py show [KEY ...]   # print your dashboard rows as JSON
+    uv run occu_sync.py summary [--force] # health summary (every 4 days, ICEMAN)
+    uv run occu_sync.py daily            # what launchd runs: sync + summary when due
     uv run occu_sync.py install          # copy to ~/.occu and run `sync` daily via launchd
 
 Garmin login tokens per dashboard profile (see GARMIN_PROFILES), created with
@@ -33,6 +35,9 @@ import time
 from pathlib import Path
 
 import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import health_summary as hs  # sibling module, installed next to this file
 
 SUPA_URL = "https://yntpsdcjqeewgcozfqxg.supabase.co"
 SUPA_KEY = "sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg"
@@ -292,11 +297,44 @@ def sync_profiles(only: str | None, days: int) -> int:
     return 2 if failed else 0
 
 
+def run_summaries(force: bool) -> int:
+    """Write a health summary for each summary profile when one is due."""
+    today = dt.date.today()  # noqa: DTZ011 — local calendar dates, like Garmin
+    failed = 0
+    for profile in hs.SUMMARY_PROFILES:
+        keys = [f"{profile}-{part}" for part in ("garmin", "daily", "health", "goals", "po-coach", "summary")]
+        rows = {r["key"]: r["data"] for r in fetch_rows(keys)}
+        existing = rows.get(f"{profile}-summary") or {}
+        if not force and not hs.is_due(existing, today):
+            log.info("%s: summary not due yet", profile.upper())
+            continue
+        facts = hs.build_facts(rows, profile, today)
+        if not hs.has_enough_data(facts):
+            log.info("%s: no Garmin data in period, skipping summary", profile.upper())
+            continue
+        try:
+            text = hs.write_summary(facts, profile.upper(), STATE_DIR)
+        except hs.SummaryError as exc:
+            failed += 1
+            log.error("%s: summary failed: %s", profile.upper(), exc)
+            notify(f"Helseoppsummering for {profile.upper()} feilet – se ~/.occu/sync.log")
+            continue
+        entry = hs.new_entry(facts, text, today)
+        upsert_row(f"{profile}-summary", hs.updated_row(existing, entry))
+        archive = STATE_DIR / "summaries"
+        archive.mkdir(mode=0o700, exist_ok=True)
+        (archive / f"{profile}-{entry['createdDate']}.md").write_text(text + "\n")
+        log.info("%s: summary written for %s – %s", profile.upper(), entry["from"], entry["to"])
+        notify(f"Ny helseoppsummering for {profile.upper()} er klar på occu.no")
+    return 2 if failed else 0
+
+
 # ---------------------------------------------------------------- install
 def install() -> None:
     STATE_DIR.mkdir(mode=0o700, exist_ok=True)
     target = STATE_DIR / "occu_sync.py"
     shutil.copy2(Path(__file__).resolve(), target)
+    shutil.copy2(Path(__file__).resolve().parent / "health_summary.py", STATE_DIR / "health_summary.py")
     uv = shutil.which("uv") or str(Path.home() / ".local" / "bin" / "uv")
     intervals = "".join(
         f"<dict><key>Hour</key><integer>{h}</integer><key>Minute</key><integer>{m}</integer></dict>"
@@ -309,7 +347,7 @@ def install() -> None:
   <key>Label</key><string>{LAUNCHD_LABEL}</string>
   <key>ProgramArguments</key><array>
     <string>{uv}</string><string>run</string><string>--quiet</string><string>--script</string>
-    <string>{target}</string><string>sync</string>
+    <string>{target}</string><string>daily</string>
   </array>
   <key>StartCalendarInterval</key><array>{intervals}</array>
   <key>StandardOutPath</key><string>{STATE_DIR / 'launchd.log'}</string>
@@ -337,6 +375,9 @@ def main() -> int:
     p_sync.add_argument("--profile", choices=sorted(GARMIN_PROFILES), help="default: every profile with Garmin tokens")
     p_show = sub.add_parser("show")
     p_show.add_argument("keys", nargs="*")
+    p_sum = sub.add_parser("summary")
+    p_sum.add_argument("--force", action="store_true", help="write one now even if not due")
+    sub.add_parser("daily")
     sub.add_parser("install")
     args = parser.parse_args()
     setup_logging(args.verbose)
@@ -350,6 +391,10 @@ def main() -> int:
             return sync_profiles(args.profile, args.days)
         elif args.cmd == "show":
             print(json.dumps(fetch_rows(args.keys or None), ensure_ascii=False, indent=2))
+        elif args.cmd == "summary":
+            return run_summaries(args.force)
+        elif args.cmd == "daily":
+            return max(sync_profiles(None, DEFAULT_DAYS), run_summaries(force=False))
         elif args.cmd == "install":
             install()
         return 0
