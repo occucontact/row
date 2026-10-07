@@ -6,11 +6,13 @@
 """occu.no helper — Garmin → Supabase sync, plus a read-only view of dashboard data.
 
     uv run occu_sync.py login            # once: sign in to Supabase (password is never stored)
-    uv run occu_sync.py sync [--days N]  # fetch Garmin data into the "<profile>-garmin" row
+    uv run occu_sync.py sync [--days N] [--profile P]  # Garmin → "<profile>-garmin" rows
     uv run occu_sync.py show [KEY ...]   # print your dashboard rows as JSON
     uv run occu_sync.py install          # copy to ~/.occu and run `sync` daily via launchd
 
-Garmin login tokens come from ~/.garminconnect (created by garmin-mcp-auth).
+Garmin login tokens per dashboard profile (see GARMIN_PROFILES), created with
+    garmin-mcp-auth --token-path <dir>
+A profile is synced only when its token directory exists.
 Supabase access uses a rotating refresh token in ~/.occu/supabase_session.json
 (mode 600). Nothing secret lives in this file: the publishable key is public and
 row level security limits every row to the signed-in owner.
@@ -35,12 +37,15 @@ import requests
 SUPA_URL = "https://yntpsdcjqeewgcozfqxg.supabase.co"
 SUPA_KEY = "sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg"
 DEFAULT_EMAIL = "occu.contact@gmail.com"
-PROFILE = os.environ.get("OCCU_PROFILE", "iceman").lower()
 
 STATE_DIR = Path.home() / ".occu"
 SESSION_FILE = STATE_DIR / "supabase_session.json"
 LOG_FILE = STATE_DIR / "sync.log"
-GARMIN_TOKENS = Path(os.environ.get("GARMINTOKENS", "~/.garminconnect")).expanduser()
+# Dashboard profile → Garmin token directory (one Garmin account each).
+GARMIN_PROFILES = {
+    "iceman": Path("~/.garminconnect").expanduser(),
+    "batman": Path("~/.garminconnect-batman").expanduser(),
+}
 
 LAUNCHD_LABEL = "no.occu.garmin-sync"
 LAUNCHD_PLIST = Path.home() / "Library" / "LaunchAgents" / f"{LAUNCHD_LABEL}.plist"
@@ -57,6 +62,10 @@ log = logging.getLogger("occu")
 
 class NeedsLogin(Exception):
     """Raised when a stored login is missing or no longer valid."""
+
+
+class GarminLoginError(NeedsLogin):
+    """A profile's Garmin tokens are missing or expired."""
 
 
 # ---------------------------------------------------------------- helpers
@@ -159,16 +168,16 @@ def upsert_row(key: str, data: dict) -> None:
 
 
 # ---------------------------------------------------------------- Garmin
-def garmin_client():
+def garmin_client(tokens: Path):
     from garminconnect import Garmin
 
-    if not GARMIN_TOKENS.exists():
-        raise NeedsLogin("no Garmin tokens")
+    if not tokens.exists():
+        raise GarminLoginError(f"no Garmin tokens in {tokens}")
     g = Garmin()
     try:
-        g.login(str(GARMIN_TOKENS))   # refreshes and re-saves tokens when needed
-    except Exception as exc:          # library raises several auth error types
-        raise NeedsLogin(f"Garmin: {exc}") from exc
+        g.login(str(tokens))   # refreshes and re-saves tokens when needed
+    except Exception as exc:   # the library raises several auth error types
+        raise GarminLoginError(str(exc)) from exc
     return g
 
 
@@ -237,9 +246,9 @@ def vo2max(g, day: str):
     return None
 
 
-def run_sync(days: int) -> None:
-    key = f"{PROFILE}-garmin"
-    g = garmin_client()
+def run_sync(profile: str, tokens: Path, days: int) -> None:
+    key = f"{profile}-garmin"
+    g = garmin_client(tokens)
     today = dt.date.today()  # noqa: DTZ011 — Garmin days are local calendar dates
     existing = fetch_rows([key])
     data = (existing[0]["data"] if existing else {}) or {}
@@ -262,6 +271,25 @@ def run_sync(days: int) -> None:
     upsert_row(key, new_data)
     latest = stored.get(today.isoformat()) or stored.get((today - dt.timedelta(days=1)).isoformat()) or {}
     log.info("Synced %d days to %s (latest: %s)", days, key, json.dumps(latest)[:200])
+
+
+def sync_profiles(only: str | None, days: int) -> int:
+    """Sync each profile independently; one broken Garmin login doesn't stop the others."""
+    targets = {only: GARMIN_PROFILES[only]} if only else {
+        name: path for name, path in GARMIN_PROFILES.items() if path.exists()
+    }
+    if not targets:
+        log.error("No Garmin tokens found for any profile")
+        return 2
+    failed = 0
+    for profile, tokens in targets.items():
+        try:
+            run_sync(profile, tokens, days)
+        except GarminLoginError as exc:
+            failed += 1
+            log.error("%s: Garmin login needed (%s)", profile.upper(), exc)
+            notify(f"Garmin-innlogging for {profile.upper()} utløpt – kjør garmin-mcp-auth --token-path {tokens}")
+    return 2 if failed else 0
 
 
 # ---------------------------------------------------------------- install
@@ -288,7 +316,6 @@ def install() -> None:
   <key>StandardErrorPath</key><string>{STATE_DIR / 'launchd.log'}</string>
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>{Path(uv).parent}:/usr/bin:/bin</string>
-    <key>OCCU_PROFILE</key><string>{PROFILE}</string>
   </dict>
 </dict></plist>
 """)
@@ -307,6 +334,7 @@ def main() -> int:
     sub.add_parser("login")
     p_sync = sub.add_parser("sync")
     p_sync.add_argument("--days", type=int, default=DEFAULT_DAYS)
+    p_sync.add_argument("--profile", choices=sorted(GARMIN_PROFILES), help="default: every profile with Garmin tokens")
     p_show = sub.add_parser("show")
     p_show.add_argument("keys", nargs="*")
     sub.add_parser("install")
@@ -319,17 +347,16 @@ def main() -> int:
         elif args.cmd == "sync":
             if not 1 <= args.days <= KEEP_DAYS:
                 parser.error(f"--days must be between 1 and {KEEP_DAYS}")
-            run_sync(args.days)
+            return sync_profiles(args.profile, args.days)
         elif args.cmd == "show":
             print(json.dumps(fetch_rows(args.keys or None), ensure_ascii=False, indent=2))
         elif args.cmd == "install":
             install()
         return 0
     except NeedsLogin as exc:
-        garmin = str(exc).startswith(("Garmin", "no Garmin"))
-        fix = "kjør garmin-mcp-auth på nytt" if garmin else "kjør: uv run ~/.occu/occu_sync.py login"
-        log.error("Login needed (%s) — %s", exc, fix)
-        notify(("Garmin" if garmin else "Supabase") + "-innlogging utløpt – " + fix)
+        fix = "kjør: uv run ~/.occu/occu_sync.py login"
+        log.error("Supabase login needed (%s) — %s", exc, fix)
+        notify("Supabase-innlogging utløpt – " + fix)
         return 2
     except requests.RequestException as exc:
         log.error("Network error: %s", exc)
