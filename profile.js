@@ -84,7 +84,8 @@
     // Also revoke the refresh token server-side when the client is loaded.
     try {
       var c = window.getSupa && window.getSupa();
-      if (c) { c.auth.signOut().then(done, done); return; }
+      // scope 'local': end only this browser's session, not the Mac sync job's.
+      if (c) { c.auth.signOut({ scope: 'local' }).then(done, done); return; }
     } catch (e) {}
     done();
   };

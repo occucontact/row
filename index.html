@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supa.js"></script>
 <script src="sync.js" defer></script>
+<script src="garmin.js" defer></script>
 <script src="topbar.js" defer></script>
 <style>
 :root {
@@ -636,6 +637,8 @@ body::after {
       <div class="goal-ticker-meta" id="goalTickerMeta">0/0</div>
     </div>
   </div>
+
+  <section class="grm-card" id="garminCard" aria-label="Garmin" hidden></section>
 
   <div class="day-ring-wrap">
     <div class="day-ring">
