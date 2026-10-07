@@ -33,12 +33,13 @@ Regler:
 - Bruk bare tall som står i dataene. Mangler noe, si det kort i stedet for å gjette.
 - Ikke still diagnoser. Ved tydelig bekymringsfulle tegn (for eksempel hvilepuls flere slag over snittet i flere dager, eller vedvarende lite søvn) anbefal å ta det opp med lege.
 - Tider står i sekunder; skriv dem som timer og minutter (7t 05m).
+- Ikke nevn vanninntak; det logges ikke.
 - Maks 170 ord. Ingen innledning, hilsen eller avslutning.
 - Bruk nøyaktig dette formatet:
 **Kort fortalt:** én eller to setninger.
 **Søvn og restitusjon:** ...
 **Aktivitet:** ...
-**Vaner:** daily-mobilitet, vann, kosttilskudd og mål.
+**Vaner:** daily-mobilitet, kosttilskudd og mål.
 **Neste {days} dager:**
 - konkret råd
 - konkret råd
@@ -113,7 +114,6 @@ def _daily_facts(rows: dict, profile: str, today: dt.date, period: list[str]) ->
 
 def _habit_facts(rows: dict, profile: str, period: list[str]) -> dict:
     health = rows.get(f"{profile}-health") or {}
-    water_logs = (health.get("po_water_v1") or {}).get("logs") or {}
     items = health.get("stack:items") or []
     goals = rows.get(f"{profile}-goals") or {}
     goal_days = {}
@@ -122,7 +122,6 @@ def _habit_facts(rows: dict, profile: str, period: list[str]) -> dict:
         if isinstance(lst, list) and lst:
             goal_days[d] = {"done": sum(1 for g in lst if isinstance(g, dict) and g.get("done")), "total": len(lst)}
     return {
-        "waterUnitsPerDay": {d: water_logs.get(d) for d in period},
         "supplementsInStack": len(items),
         "supplementsTakenPerDay": {d: len(health.get(f"stack:taken:{d}") or {}) for d in period},
         "goalsPerDay": goal_days,
@@ -207,5 +206,7 @@ def new_entry(facts: dict, text: str, today: dt.date) -> dict:
 
 
 def updated_row(existing: dict, entry: dict) -> dict:
-    history = [entry] + list((existing or {}).get("history") or [])[: HISTORY_KEEP - 1]
+    # A re-run on the same day replaces that day's summary instead of stacking.
+    previous = [e for e in (existing or {}).get("history") or [] if e.get("createdDate") != entry["createdDate"]]
+    history = [entry] + previous[: HISTORY_KEEP - 1]
     return {"latest": entry, "history": history}
