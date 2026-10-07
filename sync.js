@@ -1,12 +1,16 @@
 // =============================================================
 // Shared cloud-sync helper. Each page calls initCloudSync({...}).
-// Replace the two placeholders with your Supabase project URL +
-// publishable key (same ones you used in topbar.js/gym.html).
+// Needs supabase-js + supa.js loaded first, and a signed-in user
+// (lock.html). Without a session the page simply stays local-only.
+//
+// Each page's synced keys live in one JSON row of public.app_state,
+// keyed "<profile>-<appKey>". Row level security limits every row
+// to its owner (supabase/security.sql).
 // =============================================================
 (function () {
   'use strict';
-  const SUPABASE_URL = 'https://yntpsdcjqeewgcozfqxg.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg';
+
+  const PUSH_DEBOUNCE_MS = 250;
 
   window.initCloudSync = function (config) {
     const baseKey = config && config.appKey;
@@ -14,11 +18,17 @@
     const syncedKeys = (config && config.syncedKeys) || [];
     const syncedPrefixes = (config && config.syncedPrefixes) || [];
     const onApplied = config && config.onApplied;
-    if (!appKey || !window.supabase) return;
-    if (!SUPABASE_URL || !SUPABASE_KEY) return;
-    if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
+    const supa = window.getSupa && window.getSupa();
+    if (!baseKey || !supa) return;
 
-    let supa = null, pushTimer = null, suppressSync = false, lastSyncedJson = null;
+    // profile.js stores keys as "profile:<NAME>:<key>" but localStorage.key()
+    // returns those raw names, so strip the prefix before matching.
+    const profilePrefix = window.activeProfile ? 'profile:' + window.activeProfile + ':' : '';
+    // One-time flag per device + row: the first sync after the security
+    // upgrade merges instead of overwriting (see init below).
+    const mergedFlag = '_sync_merged_v2:' + appKey;
+
+    let pushTimer = null, suppressSync = false, lastSyncedJson = null, ready = false;
 
     function matches(k) {
       if (!k) return false;
@@ -28,10 +38,14 @@
       }
       return false;
     }
+    function unprefixed(raw) {
+      if (!profilePrefix) return raw;
+      return raw && raw.indexOf(profilePrefix) === 0 ? raw.slice(profilePrefix.length) : null;
+    }
     function listAllKeys() {
       const out = [];
       for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
+        const k = unprefixed(localStorage.key(i));
         if (matches(k)) out.push(k);
       }
       return out;
@@ -45,6 +59,7 @@
       }
       return out;
     }
+
     const origSet = localStorage.setItem.bind(localStorage);
     const origRemove = localStorage.removeItem.bind(localStorage);
     localStorage.setItem = function (k, v) {
@@ -55,6 +70,7 @@
       origRemove(k);
       try { if (!suppressSync && matches(k)) schedulePush(); } catch (e) {}
     };
+
     function applyRemote(remote) {
       if (!remote || typeof remote !== 'object') return false;
       suppressSync = true;
@@ -63,8 +79,9 @@
         for (const k of Object.keys(remote)) {
           if (!matches(k)) continue;
           const incoming = JSON.stringify(remote[k]);
-          const local = localStorage.getItem(k);
-          if (local !== incoming) { try { origSet(k, incoming); changed = true; } catch (e) {} }
+          if (localStorage.getItem(k) !== incoming) {
+            try { origSet(k, incoming); changed = true; } catch (e) {}
+          }
         }
         for (const k of listAllKeys()) {
           if (!(k in remote)) { try { origRemove(k); changed = true; } catch (e) {} }
@@ -73,30 +90,37 @@
       if (changed && typeof onApplied === 'function') { try { onApplied(); } catch (e) {} }
       return changed;
     }
+
     async function pushNow() {
-      if (!supa) return;
+      if (!ready) return false;
       const state = collect();
       const json = JSON.stringify(state);
-      if (json === lastSyncedJson) return;
+      if (json === lastSyncedJson) return true;
       try {
         const { error } = await supa.from('app_state').upsert(
           { key: appKey, data: state, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
-        if (!error) lastSyncedJson = json;
-      } catch (e) {}
+        if (error) return false;
+        lastSyncedJson = json;
+        return true;
+      } catch (e) { return false; }
     }
-    function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, 250); }
+    function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, PUSH_DEBOUNCE_MS); }
+
     function flushOnUnload() {
+      if (!ready) return;
+      const token = window.getSupaAccessToken && window.getSupaAccessToken();
+      if (!token) return;
       const state = collect();
       const json = JSON.stringify(state);
       if (json === lastSyncedJson) return;
       try {
-        fetch(SUPABASE_URL + '/rest/v1/app_state?on_conflict=key', {
+        fetch(window.SUPA_URL + '/rest/v1/app_state?on_conflict=key', {
           method: 'POST',
           headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'apikey': window.SUPA_KEY,
+            'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json',
             'Prefer': 'resolution=merge-duplicates',
           },
@@ -106,17 +130,32 @@
         lastSyncedJson = json;
       } catch (e) {}
     }
+
     (async function init() {
-      supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const user = await window.getSupaUser();
+      if (!user) return;   // not signed in → local only
+      let remote = {};
       try {
         const { data, error } = await supa.from('app_state').select('data').eq('key', appKey).maybeSingle();
-        if (!error && data && data.data && Object.keys(data.data).length > 0) {
-          lastSyncedJson = JSON.stringify(data.data);
-          applyRemote(data.data);
-        } else if (Object.keys(collect()).length > 0) {
-          schedulePush();
-        }
-      } catch (e) {}
+        if (error) return;   // e.g. offline — try again on next page load
+        remote = (data && data.data && typeof data.data === 'object') ? data.data : {};
+      } catch (e) { return; }
+      ready = true;
+
+      const local = collect();
+      if (!localStorage.getItem(mergedFlag)) {
+        // Sync was broken for a while, so this device may hold newer data
+        // than the cloud. Merge (local wins per key) so nothing is lost.
+        const merged = Object.assign({}, remote, local);
+        applyRemote(merged);
+        if (await pushNow()) { try { origSet(mergedFlag, '1'); } catch (e) {} }
+      } else if (Object.keys(remote).length > 0) {
+        lastSyncedJson = JSON.stringify(remote);
+        applyRemote(remote);
+      } else if (Object.keys(local).length > 0) {
+        schedulePush();
+      }
+
       supa.channel('app_state_' + appKey)
         .on('postgres_changes', {
           event: '*', schema: 'public', table: 'app_state', filter: 'key=eq.' + appKey,
@@ -129,8 +168,9 @@
         })
         .subscribe();
     })();
+
     window.addEventListener('beforeunload', flushOnUnload);
     window.addEventListener('pagehide', flushOnUnload);
-    window.addEventListener('storage', (e) => { if (e.key && matches(e.key)) schedulePush(); });
+    window.addEventListener('storage', (e) => { if (e.key && matches(unprefixed(e.key))) schedulePush(); });
   };
 })();

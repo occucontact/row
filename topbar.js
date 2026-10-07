@@ -11,12 +11,6 @@
 (function () {
   'use strict';
 
-  // -------- Supabase config (same project as the rest of the dashboard) --------
-  // For your audience's standalone, replace these with placeholders
-  // and have them paste their own values, just like the other pages.
-  const TOPBAR_SUPABASE_URL = 'https://yntpsdcjqeewgcozfqxg.supabase.co';
-  const TOPBAR_SUPABASE_KEY = 'sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg';
-
   // -------- CSS --------
   const css = `
 .topbar {
@@ -434,22 +428,24 @@ body.topbar-modal-open {
   }
 
   async function pushWaterMergedToSupabase(localWater) {
-    // Only do this when we're NOT on the health page — health page
-    // has its own sync that already detects the localStorage change.
-    if (window.location.pathname.endsWith('/health.html') ||
-        window.location.pathname.endsWith('health.html')) return;
+    // Only do this when we're NOT on a page that already syncs the health
+    // row itself — its own sync picks up the localStorage change.
+    const path = window.location.pathname;
+    if (/(health|po-water)\.html$/.test(path)) return;
 
-    if (!window.supabase || !TOPBAR_SUPABASE_URL || !TOPBAR_SUPABASE_KEY) return;
-    if (TOPBAR_SUPABASE_URL.indexOf('PASTE-') === 0) return;
-
+    const supa = window.getSupa && window.getSupa();
+    if (!supa || !window.activeProfile) return;
+    const rowKey = window.activeProfile.toLowerCase() + '-health';   // same row as health.html
     try {
-      const supa = window.supabase.createClient(TOPBAR_SUPABASE_URL, TOPBAR_SUPABASE_KEY);
-      const { data } = await supa
-        .from('app_state').select('data').eq('key', 'health').maybeSingle();
+      const user = await window.getSupaUser();
+      if (!user) return;
+      const { data, error } = await supa
+        .from('app_state').select('data').eq('key', rowKey).maybeSingle();
+      if (error) return;
       const current = (data && data.data) || {};
       const merged = Object.assign({}, current, { po_water_v1: localWater });
       await supa.from('app_state').upsert(
-        { key: 'health', data: merged, updated_at: new Date().toISOString() },
+        { key: rowKey, data: merged, updated_at: new Date().toISOString() },
         { onConflict: 'key' }
       );
     } catch (e) { /* offline — local change will sync next time user visits health */ }

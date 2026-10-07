@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nb">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -171,6 +171,8 @@ body {
 .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
 .screen.active { display: flex; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supa.js"></script>
 </head>
 <body>
 
@@ -178,19 +180,20 @@ body {
 
 <!-- LOGIN -->
 <div class="screen" id="sLogin">
-  <div class="lock-card">
-    <div class="lock-heading">Welcome back</div>
-    <div class="lock-sub">Enter your password to continue.</div>
-    <input class="lock-input" type="password" id="loginPw" placeholder="Password" autocomplete="current-password">
-    <button class="lock-btn" id="loginBtn">Unlock</button>
-    <div class="lock-err" id="loginErr"></div>
-  </div>
+  <form class="lock-card" id="loginForm" novalidate>
+    <div class="lock-heading">Velkommen tilbake</div>
+    <div class="lock-sub">Logg inn for å fortsette.</div>
+    <input class="lock-input" type="email" id="loginEmail" placeholder="E-post" autocomplete="username" inputmode="email" required>
+    <input class="lock-input" type="password" id="loginPw" placeholder="Passord" autocomplete="current-password" required style="margin-top:10px">
+    <button class="lock-btn" id="loginBtn" type="submit">Logg inn</button>
+    <div class="lock-err" id="loginErr" role="alert"></div>
+  </form>
 </div>
 
 <!-- PROFILE PICKER -->
 <div class="screen" id="sPick">
-  <div class="profile-pick-label">Who's this?</div>
-  <div class="profile-pick-sub">Pick your profile.</div>
+  <div class="profile-pick-label">Hvem er du?</div>
+  <div class="profile-pick-sub">Velg profil.</div>
   <div class="profile-grid" id="profileGrid"></div>
 </div>
 
@@ -198,37 +201,16 @@ body {
 'use strict';
 
 const PROFILES = ['ICEMAN', 'BATMAN'];
-const AUTH_KEY  = '_auth';
-const SESS_KEY  = '_session';
+const SESS_KEY = '_session';
+const LEGACY_AUTH_KEY = '_auth';   // old browser-only password hash — no longer used
 
-// ─── Crypto ───────────────────────────────────────────────────────────────────
-async function pbkdf2(pw, salt) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: enc.encode(salt), iterations: 250000, hash: 'SHA-256' },
-    key, 256
-  );
-  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function randHex(n) {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return Array.from(a).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-// ─── Session helpers ──────────────────────────────────────────────────────────
-function getAuth()    { try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch { return null; } }
 function getSess()    { try { return JSON.parse(localStorage.getItem(SESS_KEY)); } catch { return null; } }
 function setSess(obj) { localStorage.setItem(SESS_KEY, JSON.stringify(obj)); }
 
-// ─── Screens ──────────────────────────────────────────────────────────────────
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
 function shake(id) {
   const el = document.getElementById(id);
   el.classList.remove('shake');
@@ -237,47 +219,59 @@ function shake(id) {
   setTimeout(() => el.classList.remove('shake'), 400);
 }
 
-// ─── Default credentials (hash only — plaintext never stored in source) ───────
-// Seeded on first visit so no setup screen is ever shown.
-const DEFAULT_AUTH = {
-  salt: 'a3f8c2e1d4b5f6a7',
-  hash: 'fff9419eea948f1676207eafc774f55d65a6c28fe9709e34c970a3644722b472'
-};
-
 // ─── Init ─────────────────────────────────────────────────────────────────────
-function init() {
-  if (!getAuth()) {
-    localStorage.setItem(AUTH_KEY, JSON.stringify(DEFAULT_AUTH));
+async function init() {
+  localStorage.removeItem(LEGACY_AUTH_KEY);
+  const supa = window.getSupa && window.getSupa();
+  if (!supa) {
+    show('sLogin');
+    document.getElementById('loginErr').textContent = 'Får ikke kontakt med innloggingen. Sjekk nettet og last siden på nytt.';
+    return;
+  }
+  const user = await window.getSupaUser();
+  if (!user) {
+    setSess({});
+    show('sLogin');
+    document.getElementById('loginEmail').focus();
+    return;
   }
   const sess = getSess();
   if (sess && sess.profile && PROFILES.includes(sess.profile)) {
     window.location.replace('index.html');
     return;
   }
-  if (sess && sess.authenticated) {
-    showPicker();
-    return;
-  }
-  show('sLogin');
-  document.getElementById('loginPw').focus();
+  setSess({ authenticated: true });
+  showPicker();
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
-document.getElementById('loginBtn').addEventListener('click', doLogin);
-document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('loginForm').addEventListener('submit', doLogin);
 
-async function doLogin() {
-  const pw  = document.getElementById('loginPw').value;
-  const err = document.getElementById('loginErr');
+async function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPw').value;
+  const err   = document.getElementById('loginErr');
+  const btn   = document.getElementById('loginBtn');
   err.textContent = '';
-  const auth = getAuth();
-  if (!auth) { init(); return; }
-  const btn = document.getElementById('loginBtn');
-  btn.textContent = 'Checking…'; btn.disabled = true;
-  const hash = await pbkdf2(pw, auth.salt);
-  btn.textContent = 'Unlock'; btn.disabled = false;
-  if (hash !== auth.hash) {
-    err.textContent = 'Wrong password. Try again.';
+  if (!email || !pw) { err.textContent = 'Fyll inn e-post og passord.'; return; }
+
+  const supa = window.getSupa && window.getSupa();
+  if (!supa) { err.textContent = 'Får ikke kontakt med innloggingen. Sjekk nettet.'; return; }
+
+  btn.textContent = 'Logger inn…'; btn.disabled = true;
+  let result;
+  try {
+    result = await supa.auth.signInWithPassword({ email, password: pw });
+  } catch (ex) {
+    result = { error: { message: 'network' } };
+  }
+  btn.textContent = 'Logg inn'; btn.disabled = false;
+
+  if (result.error) {
+    err.textContent = result.error.message === 'network'
+      ? 'Ingen nettforbindelse. Prøv igjen.'
+      : 'Feil e-post eller passord.';
     shake('loginPw');
     document.getElementById('loginPw').value = '';
     document.getElementById('loginPw').focus();

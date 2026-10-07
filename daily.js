@@ -767,6 +767,20 @@
     // Resume straight into the player if a session was left running.
     if (isRunning()) { requestWakeLock(); openPlayer(); }
 
+    // sync.js is deferred, so it is defined by DOMContentLoaded.
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.initCloudSync !== 'function') return;
+      window.initCloudSync({
+        appKey: 'daily',
+        syncedKeys: [LOG_KEY, META_KEY],
+        onApplied: () => {
+          buildList();
+          render();
+          window.dispatchEvent(new Event('storage'));   // refresh topbar streak
+        }
+      });
+    });
+
     setInterval(() => {
       renderClock();
       if (pl.open && !pl.summary) { tickTimer(); renderPlayer(); }

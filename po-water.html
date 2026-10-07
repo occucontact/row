@@ -20,6 +20,7 @@ Contact: rowan.wisere@gmail.com
 <title>Water Coach</title>
 <script src="profile.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supa.js"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
 
@@ -1121,7 +1122,10 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof initCloudSync !== 'function') return;
   initCloudSync({
     appKey: 'health',
-    syncedKeys: ['po_water_v1'],
+    // Same row as health.html — must sync the same keys, or a push from
+    // here would drop the supplement stack from the shared row.
+    syncedKeys: ['stack:items', 'stack:version', 'stack:low', 'po_water_v1'],
+    syncedPrefixes: ['stack:taken:'],
     onApplied: function () { window.dispatchEvent(new Event('storage')); }
   });
 });

@@ -1476,6 +1476,7 @@ img, video, canvas, svg { max-width: 100%; }
 .hidden { display: none !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supa.js"></script>
 </head>
 <body>
 
@@ -3654,20 +3655,69 @@ const PROGRAMS = [
       img.src = dataUrl;
     });
   }
+  // Photos live in the private "progress-photos" bucket under the owner's
+  // user-id folder; they are shown through short-lived signed URLs.
+  const PHOTO_BUCKET = 'progress-photos';
+  const PHOTO_URL_TTL_SEC = 3600;
+  const photoUrlCache = {};   // storage path -> { url, exp }
+  // Set by the cloud-sync init further down once a signed-in session exists.
+  let pcSupa = null;
+  let pcUserId = null;
+
   async function uploadPhotoToStorage(dataUrl) {
-    if (!pcSupa) return null;
+    if (!pcSupa || !pcUserId) return null;
     try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const filename = 'photo_' + Date.now() + '_' +
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = pcUserId + '/photo_' + Date.now() + '_' +
         Math.random().toString(36).slice(2, 10) + '.jpg';
       const { error } = await pcSupa.storage
-        .from('progress-photos')
-        .upload(filename, blob, { contentType: 'image/jpeg', upsert: false });
-      if (error) return null;
-      const { data } = pcSupa.storage.from('progress-photos').getPublicUrl(filename);
-      return data ? data.publicUrl : null;
+        .from(PHOTO_BUCKET)
+        .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      return error ? null : path;
     } catch (e) { return null; }
+  }
+  // Older entries stored a public URL; derive the object path from it.
+  function photoStoragePath(p) {
+    if (!p) return null;
+    if (p.path) return p.path;
+    const m = p.url && String(p.url).match(/\/progress-photos\/([^?]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  async function photoSignedUrl(path) {
+    const hit = photoUrlCache[path];
+    if (hit && hit.exp > Date.now()) return hit.url;
+    if (!pcSupa) return null;
+    try {
+      const { data, error } = await pcSupa.storage.from(PHOTO_BUCKET).createSignedUrl(path, PHOTO_URL_TTL_SEC);
+      if (error || !data) return null;
+      photoUrlCache[path] = { url: data.signedUrl, exp: Date.now() + (PHOTO_URL_TTL_SEC - 60) * 1000 };
+      return data.signedUrl;
+    } catch (e) { return null; }
+  }
+  function setPhotoImg(img, p) {
+    if (!img || !p) return;
+    if (p.dataUrl) { img.src = p.dataUrl; return; }
+    const path = photoStoragePath(p);
+    if (!path) return;
+    img.removeAttribute('src');
+    img.dataset.photoPath = path;
+    photoSignedUrl(path).then((url) => {
+      if (url && img.dataset.photoPath === path) img.src = url;
+    });
+  }
+  // Photos taken while offline / signed out are kept as data URLs; upload them
+  // once sync is ready.
+  async function pcUploadPendingPhotos() {
+    const pending = photos.filter((p) => p && p.dataUrl && !p.path && !p.url);
+    for (const p of pending) {
+      const path = await uploadPhotoToStorage(p.dataUrl);
+      const e = path && photos.find((x) => x.id === p.id);
+      if (!e) continue;
+      e.path = path;
+      delete e.dataUrl;
+      photosSave();
+    }
+    photosRender();
   }
   function photoFmtDate(key) {
     const d = wtParseKey(key);
@@ -3685,7 +3735,7 @@ const PROGRAMS = [
     } else {
       grid.innerHTML = photos.map(p =>
         '<button class="wt-photo-card" data-id="' + p.id + '" type="button">' +
-          '<img src="' + (p.url || p.dataUrl) + '" alt="">' +
+          '<img data-pid="' + p.id + '" alt="">' +
           '<div class="wt-photo-overlay"></div>' +
           '<div class="wt-photo-meta">' +
             '<span class="wt-photo-date">' + photoFmtDate(p.dateKey) + '</span>' +
@@ -3695,6 +3745,9 @@ const PROGRAMS = [
       ).join('');
       grid.querySelectorAll('.wt-photo-card').forEach(card => {
         card.addEventListener('click', () => openPhoto(card.dataset.id));
+      });
+      grid.querySelectorAll('img[data-pid]').forEach(img => {
+        setPhotoImg(img, photos.find(x => String(x.id) === img.dataset.pid));
       });
     }
     // Update count on the link
@@ -3726,11 +3779,12 @@ const PROGRAMS = [
       }
     }
     photosRender();
-    uploadPhotoToStorage(entry.dataUrl).then((url) => {
-      if (!url) return;
+    uploadPhotoToStorage(entry.dataUrl).then((path) => {
+      if (!path) return;
       const e = photos.find(p => p.id === id);
       if (!e) return;
-      e.url = url;
+      e.path = path;
+      delete e.url;
       delete e.dataUrl;
       photosSave();
       photosRender();
@@ -3819,7 +3873,7 @@ const PROGRAMS = [
     const p = photos.find(x => x.id === id);
     if (!p) return;
     activePhotoId = id;
-    $('wtViewerImg').src = p.url || p.dataUrl;
+    setPhotoImg($('wtViewerImg'), p);
     $('wtViewerDate').textContent = photoFmtDate(p.dateKey).toUpperCase();
     $('wtViewerWeight').textContent = p.weight || '—';
     $('wtViewer').dataset.mode = 'single';
@@ -3869,8 +3923,8 @@ const PROGRAMS = [
     if (!A || !B) return;
     activePhotoId = activeId;
     comparePhotoId = otherId;
-    $('wtCmpImgA').src = A.url || A.dataUrl;
-    $('wtCmpImgB').src = B.url || B.dataUrl;
+    setPhotoImg($('wtCmpImgA'), A);
+    setPhotoImg($('wtCmpImgB'), B);
     $('wtCmpMetaA').textContent = photoFmtDate(A.dateKey) + ' · ' + (A.weight || '—');
     $('wtCmpMetaB').textContent = photoFmtDate(B.dateKey) + ' · ' + (B.weight || '—');
     // Headline — date arrow + weight delta
@@ -3967,12 +4021,11 @@ const PROGRAMS = [
   // If you leave the placeholders unchanged the app still works,
   // just only on this device (data stays in your browser).
   // ============================================================
-  const SUPABASE_URL = 'https://yntpsdcjqeewgcozfqxg.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_czAWpjJwmdO19E_kO2ROLA_DpPs00lg';
+  // Client + keys come from supa.js; row level security limits rows to the signed-in owner.
   const APP_KEY = (window.activeProfile ? window.activeProfile.toLowerCase() + '-' : '') + 'po-coach';
   const PC_SYNCED_KEYS = ['po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos', 'po_prog_state'];
 
-  let pcSupa = null;
+  const PC_MERGED_FLAG = '_sync_merged_v2:' + APP_KEY;
   let pcPushTimer = null;
   let pcSuppressSync = false;
   let pcPendingRemote = null;
@@ -4007,8 +4060,8 @@ const PROGRAMS = [
       try { val = JSON.parse(v); } catch { continue; }
       if (k === 'po_coach_photos' && Array.isArray(val)) {
         val = val
-          .filter((p) => p && p.url)
-          .map((p) => ({ id: p.id, url: p.url, dateKey: p.dateKey, weight: p.weight }));
+          .filter((p) => p && (p.path || p.url))
+          .map((p) => ({ id: p.id, path: photoStoragePath(p), dateKey: p.dateKey, weight: p.weight }));
       }
       out[k] = val;
     }
@@ -4050,7 +4103,7 @@ const PROGRAMS = [
           try { localPhotos = JSON.parse(localStorage.getItem(k) || '[]'); } catch {}
           const remotePhotos = Array.isArray(remote[k]) ? remote[k] : [];
           const remoteIds = new Set(remotePhotos.map((p) => p && p.id));
-          const localOnly = localPhotos.filter((p) => p && !p.url && !remoteIds.has(p.id));
+          const localOnly = localPhotos.filter((p) => p && !p.url && !p.path && !remoteIds.has(p.id));
           const merged = [...remotePhotos, ...localOnly];
           const incoming = JSON.stringify(merged);
           if (localStorage.getItem(k) !== incoming) {
@@ -4090,7 +4143,7 @@ const PROGRAMS = [
     if (!pcSupa) return;
     const state = pcCollectState();
     const json = JSON.stringify(state);
-    if (json === pcLastSyncedJson) return;
+    if (json === pcLastSyncedJson) return true;
     try {
       const { error } = await pcSupa
         .from('app_state')
@@ -4098,8 +4151,10 @@ const PROGRAMS = [
           { key: APP_KEY, data: state, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
-      if (!error) pcLastSyncedJson = json;
-    } catch (_) {}
+      if (error) return false;
+      pcLastSyncedJson = json;
+      return true;
+    } catch (_) { return false; }
   }
 
   function pcSchedulePush() {
@@ -4112,15 +4167,17 @@ const PROGRAMS = [
   // doesn't lose the latest change before the debounced push fires.
   function pcFlushPushOnUnload() {
     if (!pcSupa) return;
+    const token = window.getSupaAccessToken && window.getSupaAccessToken();
+    if (!token) return;
     const state = pcCollectState();
     const json = JSON.stringify(state);
     if (json === pcLastSyncedJson) return;
     try {
-      fetch(SUPABASE_URL + '/rest/v1/app_state?on_conflict=key', {
+      fetch(window.SUPA_URL + '/rest/v1/app_state?on_conflict=key', {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'apikey': window.SUPA_KEY,
+          'Authorization': 'Bearer ' + token,
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates',
         },
@@ -4134,20 +4191,40 @@ const PROGRAMS = [
   // Initial sync: connect Supabase, pull current state, subscribe to
   // realtime updates so other devices' changes appear instantly.
   (async function pcInitCloudSync() {
-    if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY) return;
-    // Skip if the placeholder values are still in place (local-only mode)
-    if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
-    pcSupa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = window.getSupa && window.getSupa();
+    if (!client) return;
+    const user = await window.getSupaUser();
+    if (!user) return;   // not signed in → this device only
+    pcUserId = user.id;
+    let remote = {};
     try {
-      const { data, error } = await pcSupa
+      const { data, error } = await client
         .from('app_state').select('data').eq('key', APP_KEY).maybeSingle();
-      if (!error && data && data.data && Object.keys(data.data).length > 0) {
-        pcLastSyncedJson = JSON.stringify(data.data);
-        pcMaybeApplyRemote(data.data);
+      if (error) return;   // offline — retry on next load
+      remote = (data && data.data && typeof data.data === 'object') ? data.data : {};
+    } catch (_) { return; }
+    pcSupa = client;
+    try {
+      if (!localStorage.getItem(PC_MERGED_FLAG)) {
+        // Sync was down for months: merge so data entered on this device
+        // in the meantime survives (local wins per key, photos unioned by id).
+        const local = pcCollectState();
+        const merged = Object.assign({}, remote, local);
+        if (Array.isArray(remote.po_coach_photos) && Array.isArray(local.po_coach_photos)) {
+          const ids = new Set(local.po_coach_photos.map((p) => p && p.id));
+          merged.po_coach_photos = local.po_coach_photos.concat(
+            remote.po_coach_photos.filter((p) => p && !ids.has(p.id)));
+        }
+        pcApplyRemoteState(merged);
+        if (await pcPushNow()) { try { localStorage.setItem(PC_MERGED_FLAG, '1'); } catch (_) {} }
+      } else if (Object.keys(remote).length > 0) {
+        pcLastSyncedJson = JSON.stringify(remote);
+        pcMaybeApplyRemote(remote);
       } else if (Object.keys(pcCollectState()).length > 0) {
         pcSchedulePush();
       }
     } catch (_) {}
+    pcUploadPendingPhotos();
     pcSupa.channel('app_state_' + APP_KEY)
       .on('postgres_changes', {
         event: '*',

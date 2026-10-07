@@ -16,14 +16,19 @@
   'use strict';
 
   var SESS_KEY = '_session';
+  var SUPA_AUTH_KEY = '_sb_auth';   // Supabase login token (see supa.js)
 
   // ── Read session ────────────────────────────────────────────
   var sess;
   try { sess = JSON.parse(localStorage.getItem(SESS_KEY)); } catch (e) {}
 
   // ── Auth guard ──────────────────────────────────────────────
-  // A valid session must have both authenticated + profile.
-  if (!sess || !sess.authenticated || !sess.profile) {
+  // A valid session needs a Supabase login token plus a chosen profile.
+  // (The token is checked for presence only so pages still open offline;
+  // the database itself rejects anything without a valid token.)
+  var hasLogin = false;
+  try { hasLogin = !!localStorage.getItem(SUPA_AUTH_KEY); } catch (e) {}
+  if (!hasLogin || !sess || !sess.authenticated || !sess.profile) {
     // Hide any flash of page content before the navigation fires.
     document.documentElement.style.visibility = 'hidden';
     window.location.replace('lock.html');
@@ -72,7 +77,16 @@
   // the wrapper has been installed.
   window.dashLogout = function () {
     _remove(SESS_KEY);
-    window.location.replace('lock.html');
+    var done = function () {
+      _remove(SUPA_AUTH_KEY);
+      window.location.replace('lock.html');
+    };
+    // Also revoke the refresh token server-side when the client is loaded.
+    try {
+      var c = window.getSupa && window.getSupa();
+      if (c) { c.auth.signOut().then(done, done); return; }
+    } catch (e) {}
+    done();
   };
   window.dashSwitch = function () {
     try { _set(SESS_KEY, JSON.stringify({ authenticated: true })); } catch (e) {}
