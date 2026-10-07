@@ -58,9 +58,15 @@
   };
 
   // ── localStorage namespace wrapper ──────────────────────────
-  var _get    = localStorage.getItem.bind(localStorage);
-  var _set    = localStorage.setItem.bind(localStorage);
-  var _remove = localStorage.removeItem.bind(localStorage);
+  // Patched on Storage.prototype, NOT by assigning localStorage.setItem:
+  // Safari treats that assignment as storing an item named "setItem" and
+  // keeps the original method, so the namespace silently never applied.
+  var ls = window.localStorage;
+  var proto = Storage.prototype;
+  var rawGet = proto.getItem, rawSet = proto.setItem, rawRemove = proto.removeItem;
+  var _get    = function (k) { return rawGet.call(ls, k); };
+  var _set    = function (k, v) { rawSet.call(ls, k, v); };
+  var _remove = function (k) { rawRemove.call(ls, k); };
 
   // Keys that start with "_" bypass profiling (e.g. _auth, _session).
   function pfx(k) {
@@ -68,9 +74,66 @@
     return 'profile:' + profile + ':' + k;
   }
 
-  localStorage.getItem    = function (k) { return _get(pfx(k)); };
-  localStorage.setItem    = function (k, v) { _set(pfx(k), v); };
-  localStorage.removeItem = function (k) { _remove(pfx(k)); };
+  // localStorage.key() returns raw names; use this to list the active
+  // profile's keys (unprefixed), e.g. profileStorageKeys('goals:').
+  window.profileStorageKeys = function (prefix) {
+    var own = 'profile:' + profile + ':';
+    var out = [];
+    for (var i = 0; i < ls.length; i++) {
+      var raw = ls.key(i);
+      if (!raw || raw.indexOf(own) !== 0) continue;
+      var k = raw.slice(own.length);
+      if (!prefix || k.indexOf(prefix) === 0) out.push(k);
+    }
+    return out;
+  };
+
+  // Other modules (sync.js, gym.html) subscribe here instead of wrapping
+  // setItem themselves. Listeners get the unprefixed key.
+  var writeListeners = [];
+  window.onProfileStorageWrite = function (fn) { writeListeners.push(fn); };
+  function notifyWrite(k) {
+    for (var i = 0; i < writeListeners.length; i++) {
+      try { writeListeners[i](k); } catch (e) { /* a listener must never block the write */ }
+    }
+  }
+
+  proto.getItem = function (k) {
+    return rawGet.call(this, this === ls ? pfx(k) : k);
+  };
+  proto.setItem = function (k, v) {
+    if (this !== ls) return rawSet.call(this, k, v);
+    rawSet.call(this, pfx(k), v);
+    notifyWrite(k);
+  };
+  proto.removeItem = function (k) {
+    if (this !== ls) return rawRemove.call(this, k);
+    rawRemove.call(this, pfx(k));
+    notifyWrite(k);
+  };
+
+  // ── One-time repair for browsers where the old wrapper never worked ──
+  // Copy un-namespaced app keys into the active profile (never overwriting
+  // existing profile data), and drop the junk items Safari created when the
+  // old code assigned functions to localStorage.setItem/getItem/removeItem.
+  // The raw originals are kept as a fallback copy.
+  var MIGRATED_KEY = '_profile_keys_migrated_v1';
+  var JUNK_KEYS = { setItem: 1, getItem: 1, removeItem: 1, key: 1, clear: 1 };
+  if (!_get(MIGRATED_KEY)) {
+    try {
+      var rawKeys = [];
+      for (var i = 0; i < ls.length; i++) {
+        var rk = ls.key(i);
+        if (!rk || rk.charAt(0) === '_' || rk.indexOf('profile:') === 0 || rk.indexOf('sb-') === 0) continue;
+        rawKeys.push(rk);
+      }
+      rawKeys.forEach(function (rk) {
+        if (JUNK_KEYS[rk]) { _remove(rk); return; }
+        if (_get(pfx(rk)) == null) _set(pfx(rk), _get(rk));
+      });
+      _set(MIGRATED_KEY, profile);
+    } catch (e) { /* storage full — retry on next load */ }
+  }
 
   // Patch dashLogout/dashSwitch to use the undecorated _remove
   // so they can still clear the _session key correctly even after

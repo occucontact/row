@@ -25,8 +25,9 @@
     // returns those raw names, so strip the prefix before matching.
     const profilePrefix = window.activeProfile ? 'profile:' + window.activeProfile + ':' : '';
     // One-time flag per device + row: the first sync after the security
-    // upgrade merges instead of overwriting (see init below).
-    const mergedFlag = '_sync_merged_v2:' + appKey;
+    // upgrade merges instead of overwriting (see init below). v3: re-run
+    // after the Safari fix, since v2 pushed empty rows from Safari.
+    const mergedFlag = '_sync_merged_v3:' + appKey;
 
     let pushTimer = null, suppressSync = false, lastSyncedJson = null, ready = false;
 
@@ -43,12 +44,9 @@
       return raw && raw.indexOf(profilePrefix) === 0 ? raw.slice(profilePrefix.length) : null;
     }
     function listAllKeys() {
-      const out = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = unprefixed(localStorage.key(i));
-        if (matches(k)) out.push(k);
-      }
-      return out;
+      const keys = window.profileStorageKeys ? window.profileStorageKeys()
+        : Array.from({ length: localStorage.length }, (_, i) => unprefixed(localStorage.key(i)));
+      return keys.filter(matches);
     }
     function collect() {
       const out = {};
@@ -60,16 +58,13 @@
       return out;
     }
 
-    const origSet = localStorage.setItem.bind(localStorage);
-    const origRemove = localStorage.removeItem.bind(localStorage);
-    localStorage.setItem = function (k, v) {
-      origSet(k, v);
-      try { if (!suppressSync && matches(k)) schedulePush(); } catch (e) {}
-    };
-    localStorage.removeItem = function (k) {
-      origRemove(k);
-      try { if (!suppressSync && matches(k)) schedulePush(); } catch (e) {}
-    };
+    // Writes go through profile.js's namespacing; we only listen for them.
+    // (Never reassign localStorage.setItem — Safari ignores that.)
+    const origSet = (k, v) => localStorage.setItem(k, v);
+    const origRemove = (k) => localStorage.removeItem(k);
+    if (typeof window.onProfileStorageWrite === 'function') {
+      window.onProfileStorageWrite((k) => { if (!suppressSync && matches(k)) schedulePush(); });
+    }
 
     function applyRemote(remote) {
       if (!remote || typeof remote !== 'object') return false;
@@ -144,9 +139,11 @@
 
       const local = collect();
       if (!localStorage.getItem(mergedFlag)) {
-        // Sync was broken for a while, so this device may hold newer data
-        // than the cloud. Merge (local wins per key) so nothing is lost.
-        const merged = Object.assign({}, remote, local);
+        // Sync was broken for a while, so this device may hold data the
+        // cloud lacks. Merge: the cloud wins on conflicts (so the first
+        // device synced decides, and a stale device can't overwrite it)
+        // and local-only keys are added.
+        const merged = Object.assign({}, local, remote);
         applyRemote(merged);
         if (await pushNow()) { try { origSet(mergedFlag, '1'); } catch (e) {} }
       } else if (Object.keys(remote).length > 0) {

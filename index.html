@@ -740,13 +740,9 @@ body::after {
     }
   }
   function storeDelete(key) { try { localStorage.removeItem(key); } catch (e) {} }
+  // Keys of the active profile only (profile.js namespaces them).
   function storeListKeys(prefix) {
-    const out = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.indexOf(prefix) === 0) out.push(k);
-    }
-    return out;
+    return window.profileStorageKeys ? window.profileStorageKeys(prefix) : [];
   }
 
   // ---------- date helpers ----------

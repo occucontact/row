@@ -4025,7 +4025,7 @@ const PROGRAMS = [
   const APP_KEY = (window.activeProfile ? window.activeProfile.toLowerCase() + '-' : '') + 'po-coach';
   const PC_SYNCED_KEYS = ['po_coach_v1', 'po_coach_workout_done', 'po_coach_weights', 'po_coach_photos', 'po_prog_state'];
 
-  const PC_MERGED_FLAG = '_sync_merged_v2:' + APP_KEY;
+  const PC_MERGED_FLAG = '_sync_merged_v3:' + APP_KEY;
   let pcPushTimer = null;
   let pcSuppressSync = false;
   let pcPendingRemote = null;
@@ -4033,23 +4033,15 @@ const PROGRAMS = [
   // realtime echoes of our own pushes so we don't infinite-loop.
   let pcLastSyncedJson = null;
 
-  const _pcOrigSet = localStorage.setItem.bind(localStorage);
-  const _pcOrigRemove = localStorage.removeItem.bind(localStorage);
-  // Wrap setItem/removeItem so a sync-side error can NEVER prevent the
-  // underlying write from happening. The original call always runs;
-  // any error in the sync scheduling is swallowed.
-  localStorage.setItem = function(k, v) {
-    _pcOrigSet(k, v);
-    try {
+  const _pcOrigSet = (k, v) => localStorage.setItem(k, v);
+  const _pcOrigRemove = (k) => localStorage.removeItem(k);
+  // Listen for writes via profile.js instead of reassigning
+  // localStorage.setItem (Safari ignores that reassignment).
+  if (typeof window.onProfileStorageWrite === 'function') {
+    window.onProfileStorageWrite((k) => {
       if (!pcSuppressSync && PC_SYNCED_KEYS.indexOf(k) !== -1) pcSchedulePush();
-    } catch (e) {}
-  };
-  localStorage.removeItem = function(k) {
-    _pcOrigRemove(k);
-    try {
-      if (!pcSuppressSync && PC_SYNCED_KEYS.indexOf(k) !== -1) pcSchedulePush();
-    } catch (e) {}
-  };
+    });
+  }
 
   function pcCollectState() {
     const out = {};
@@ -4206,14 +4198,15 @@ const PROGRAMS = [
     pcSupa = client;
     try {
       if (!localStorage.getItem(PC_MERGED_FLAG)) {
-        // Sync was down for months: merge so data entered on this device
-        // in the meantime survives (local wins per key, photos unioned by id).
+        // Sync was down for months: merge so data only on this device
+        // survives (cloud wins per key so a stale device can't overwrite
+        // newer data; photos are unioned by id).
         const local = pcCollectState();
-        const merged = Object.assign({}, remote, local);
+        const merged = Object.assign({}, local, remote);
         if (Array.isArray(remote.po_coach_photos) && Array.isArray(local.po_coach_photos)) {
-          const ids = new Set(local.po_coach_photos.map((p) => p && p.id));
-          merged.po_coach_photos = local.po_coach_photos.concat(
-            remote.po_coach_photos.filter((p) => p && !ids.has(p.id)));
+          const ids = new Set(remote.po_coach_photos.map((p) => p && p.id));
+          merged.po_coach_photos = remote.po_coach_photos.concat(
+            local.po_coach_photos.filter((p) => p && !ids.has(p.id)));
         }
         pcApplyRemoteState(merged);
         if (await pcPushNow()) { try { localStorage.setItem(PC_MERGED_FLAG, '1'); } catch (_) {} }
